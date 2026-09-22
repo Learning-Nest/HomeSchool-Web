@@ -1,0 +1,146 @@
+name: Deploy
+
+# Deploys the admin console (admin/dist) and the public site (site/) to two separate Azure Static Web Apps.
+#
+# Triggers:
+#   - workflow_dispatch with an `environment` input (nonprod|prod) — deploy on demand to either environment.
+#   - push to main — always deploys to nonprod automatically. Deploying to prod is manual-only (workflow_dispatch).
+#
+# GitHub Environments:
+#   This workflow runs its deploy job under the GitHub *environment* named `nonprod` or `prod`. Both must be
+#   created under the repository's Settings -> Environments before this workflow can deploy.
+#     - `nonprod`: no protection rules needed.
+#     - `prod`: add required reviewers in the GitHub UI (Settings -> Environments -> prod -> Deployment
+#       protection rules) so a human approves every production deploy. This workflow does not configure that
+#       for you — it must be set up once, by hand, in the repo settings.
+#
+# Each environment needs these repository/environment configuration values (Settings -> Environments -> <env>):
+#   Variables (not secrets — used as OIDC login inputs, safe to be visible in logs):
+#     AZURE_CLIENT_ID       - client ID of the federated (OIDC) app registration/user-assigned identity
+#     AZURE_TENANT_ID       - Azure AD tenant ID
+#     AZURE_SUBSCRIPTION_ID - subscription containing the Static Web Apps and resource group
+#     AZURE_RESOURCE_GROUP  - resource group the two Static Web Apps live in
+#     SWA_ADMIN_NAME        - name of the Azure Static Web App resource for the admin console
+#     SWA_SITE_NAME         - name of the Azure Static Web App resource for the public site
+#     API_BASE_URL          - (optional) overrides the admin build's API base URL; falls back to the
+#                              admin/.env.<environment> file's VITE_API_BASE_URL when unset
+#   No long-lived secrets are needed: deployment tokens are fetched at deploy time via `az staticwebapp
+#   secrets list` using the OIDC-authenticated Azure login, and are masked in the logs before use.
+#
+# The federated credential on the Azure app registration/identity must trust this repo + the `nonprod` and
+# `prod` GitHub Environments (subject like `repo:<org>/<repo>:environment:nonprod`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        required: true
+        options:
+          - nonprod
+          - prod
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'nonprod' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve-environment:
+    name: Resolve target environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+    steps:
+      - id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=nonprod" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Build & deploy
+    needs: resolve-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-environment.outputs.environment }}
+    env:
+      TARGET_ENV: ${{ needs.resolve-environment.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Check public site pages
+        run: node tools/check-site.mjs
+
+      - name: Install admin dependencies
+        working-directory: admin
+        run: npm ci
+
+      - name: Resolve API base URL override
+        run: |
+          if [ -n "${{ vars.API_BASE_URL }}" ]; then
+            echo "VITE_API_BASE_URL=${{ vars.API_BASE_URL }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build admin console
+        working-directory: admin
+        run: npm run "build:${TARGET_ENV}"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch Static Web Apps deployment tokens
+        id: tokens
+        run: |
+          set -euo pipefail
+
+          admin_token=$(az staticwebapp secrets list \
+            --name "${{ vars.SWA_ADMIN_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.apiKey -o tsv)
+          echo "::add-mask::$admin_token"
+          echo "admin_token=$admin_token" >> "$GITHUB_OUTPUT"
+
+          site_token=$(az staticwebapp secrets list \
+            --name "${{ vars.SWA_SITE_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.apiKey -o tsv)
+          echo "::add-mask::$site_token"
+          echo "site_token=$site_token" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy admin console
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.tokens.outputs.admin_token }}
+          action: upload
+          app_location: admin/dist
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Deploy public site
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.tokens.outputs.site_token }}
+          action: upload
+          app_location: site
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true

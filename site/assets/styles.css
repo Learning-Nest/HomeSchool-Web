@@ -1,0 +1,531 @@
+/* HomeSchooling public website — shared stylesheet.
+   No build step: plain CSS, loaded directly by every page. System font stack only. */
+
+:root {
+  color-scheme: light dark;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-bg: #ffffff;
+  --color-bg-muted: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-text: #1a1d29;
+  --color-text-muted: #4b5163;
+  --color-border: #d8dce6;
+  --color-brand: #3b5bdb;
+  --color-brand-dark: #2c46ab;
+  --color-brand-contrast: #ffffff;
+  --color-accent: #0f7b6c;
+  --color-focus: #d3350c;
+  --color-danger: #b3261e;
+
+  --max-width: 72rem;
+  --radius: 0.5rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14161f;
+    --color-bg-muted: #1b1e2a;
+    --color-surface: #1e2130;
+    --color-text: #eef0f6;
+    --color-text-muted: #b7bcce;
+    --color-border: #343850;
+    --color-brand: #7f9bff;
+    --color-brand-dark: #a9bcff;
+    --color-brand-contrast: #0d1023;
+    --color-accent: #4fd6c0;
+    --color-focus: #ff8a65;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: var(--color-brand);
+}
+
+a:hover {
+  color: var(--color-brand-dark);
+}
+
+/* ---------- Focus states (keyboard accessibility) ---------- */
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------- Skip link ---------- */
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  left: var(--space-3);
+  top: var(--space-3);
+  width: auto;
+  height: auto;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ---------- Layout helpers ---------- */
+
+.wrap {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+/* ---------- Header / nav ---------- */
+
+.site-header {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--color-text);
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+}
+
+.site-nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+}
+
+.site-nav a {
+  display: inline-block;
+  padding: var(--space-2) 0;
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+}
+
+.site-nav a:hover {
+  color: var(--color-brand);
+}
+
+.site-nav a[aria-current="page"] {
+  color: var(--color-brand);
+  border-bottom-color: var(--color-brand);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.3rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+}
+
+.btn-primary:hover {
+  background: var(--color-brand-dark);
+  color: var(--color-brand-contrast);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+.btn-secondary:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-brand-dark);
+  border-color: var(--color-brand-dark);
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+  padding-block: var(--space-6) var(--space-5);
+  background: linear-gradient(180deg, var(--color-bg-muted), var(--color-bg));
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4vw + 1rem, 3rem);
+  margin: 0 0 var(--space-3);
+  max-width: 40rem;
+}
+
+.hero p.lede {
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+  max-width: 40rem;
+  margin: 0 0 var(--space-4);
+}
+
+.hero .cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ---------- Sections ---------- */
+
+main {
+  display: block;
+}
+
+section {
+  padding-block: var(--space-6);
+}
+
+section.tight {
+  padding-block: var(--space-5);
+}
+
+section > .wrap > h2 {
+  font-size: 1.75rem;
+  margin-top: 0;
+}
+
+section.alt {
+  background: var(--color-bg-muted);
+}
+
+.lede-section {
+  max-width: 42rem;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+}
+
+/* ---------- Grids / cards ---------- */
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin-top: var(--space-4);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.card p {
+  color: var(--color-text-muted);
+  margin-bottom: 0;
+}
+
+/* ---------- Steps / ordered process ---------- */
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.steps li {
+  counter-increment: step;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  position: relative;
+  padding-top: var(--space-5);
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-4);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* ---------- Tables (curriculum) ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+  margin-top: var(--space-3);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 32rem;
+}
+
+caption {
+  text-align: left;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Badges / tags ---------- */
+
+.tag {
+  display: inline-block;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 0 0.3rem 0.3rem 0;
+}
+
+.badge-soon {
+  display: inline-block;
+  background: #fff3e0;
+  color: #8a4b00;
+  border: 1px solid #f0c98a;
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge-soon {
+    background: #3a2a10;
+    color: #ffcf87;
+    border-color: #6b4d1c;
+  }
+}
+
+.notice-legal {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-focus);
+  background: var(--color-bg-muted);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-4);
+}
+
+.notice-legal strong {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* ---------- Forms (contact) ---------- */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  max-width: 32rem;
+}
+
+.form-field label {
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field textarea {
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-hint {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  padding-block: var(--space-5);
+  margin-top: var(--space-6);
+}
+
+.site-footer .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.site-footer nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.site-footer nav a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.site-footer nav a:hover {
+  color: var(--color-brand);
+}
+
+.site-footer small {
+  color: var(--color-text-muted);
+}
+
+/* ---------- 404 page ---------- */
+
+.error-page {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.error-page .code {
+  font-size: 5rem;
+  font-weight: 800;
+  color: var(--color-brand);
+  margin: 0;
+  line-height: 1;
+}
+
+/* ---------- Utility ---------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 40rem) {
+  .hero {
+    padding-block: var(--space-5) var(--space-4);
+  }
+
+  section {
+    padding-block: var(--space-5);
+  }
+}

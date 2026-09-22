@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local-only env overrides (never .env.dev/.env.nonprod/.env.prod — those are committed and public-value-only)
+.env.local
+
+# Logs
+*.log
+
+# Editor/OS noise
+.DS_Store
