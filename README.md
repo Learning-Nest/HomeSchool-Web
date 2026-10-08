@@ -8,7 +8,7 @@ separate Azure Static Web Apps.
 | Folder | What it is | Build step |
 | --- | --- | --- |
 | `site/` | Public marketing website (home, how it works, for parents, curriculum, pricing, contact, privacy notice, terms, 404). | None — plain HTML/CSS/vanilla JS, served as-is. No trackers, no external scripts. |
-| `admin/` | Content-admin console (React + TypeScript + Vite SPA) used by staff to manage activities and content. | Vite build (`npm run build:<env>`), output in `admin/dist`. |
+| `admin/` | Content-admin console (React + TypeScript + Vite SPA) used by staff to manage activities and content. | Vite build (`pnpm run build:<env>`), output in `admin/dist`. |
 | `tools/` | Repo-wide scripts, currently `check-site.mjs`. | Node stdlib only, no dependencies. |
 | `.github/workflows/` | CI (`ci.yml`) and deploy (`deploy.yml`) pipelines. | — |
 
@@ -17,26 +17,26 @@ separate Azure Static Web Apps.
 
 ## Setup
 
-You need Node.js 22.13+ and npm. `admin/` is a Vite React app with its own `package.json`; `site/` has no
+You need Node.js 22.13+ and pnpm 10 (`npm install -g pnpm`). `admin/` is a Vite React app with its own `package.json`; `site/` has no
 dependencies at all.
 
 ### Windows (PowerShell)
 
 ```powershell
 cd web\admin
-npm ci
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### macOS / Linux
 
 ```bash
 cd web/admin
-npm ci
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-`npm run dev` starts the admin console at `http://localhost:5173`, talking to whatever API
+`pnpm dev` starts the admin console at `http://localhost:5173`, talking to whatever API
 `admin/.env.dev`'s `VITE_API_BASE_URL` points at (see below for running a local API).
 
 There's nothing to install or build for `site/` — open any `site/*.html` file directly, or serve the folder
@@ -56,24 +56,24 @@ the public JS bundle, so **never put secrets in these files**. They are committe
 
 | File | Mode | Used by |
 | --- | --- | --- |
-| `admin/.env.dev` | `dev` | `npm run dev`, `npm run build:dev` — points at `http://localhost:8000` by default. |
-| `admin/.env.nonprod` | `nonprod` | `npm run build:nonprod` — placeholder API URL until Terraform's nonprod `api_url` output is filled in, or the deploy workflow overrides it. |
-| `admin/.env.prod` | `prod` | `npm run build:prod` — same, for the prod stack. |
+| `admin/.env.dev` | `dev` | `pnpm dev`, `pnpm run build:dev` — points at `http://localhost:8000` by default. |
+| `admin/.env.nonprod` | `nonprod` | `pnpm run build:nonprod` — placeholder API URL until Terraform's nonprod `api_url` output is filled in, or the deploy workflow overrides it. |
+| `admin/.env.prod` | `prod` | `pnpm run build:prod` — same, for the prod stack. |
 
 A `VITE_API_BASE_URL` already present in the environment (e.g. set by CI) always wins over the value in the
 `.env.<mode>` file — see `admin/scripts/write-swa-config.mjs`'s comment and `deploy.yml`'s "Resolve API base
 URL override" step.
 
-## npm scripts (run inside `admin/`)
+## pnpm scripts (run inside `admin/`)
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Vite dev server, mode `dev`. |
-| `npm run build:dev` / `build:nonprod` / `build:prod` | Production build for that environment, then writes `dist/staticwebapp.config.json` from `public/staticwebapp.config.json` with the API origin filled into the CSP's `connect-src`. |
-| `npm run preview` | Serves the last build locally on port 4173. |
-| `npm run typecheck` | `tsc --noEmit`. |
-| `npm run lint` | ESLint over the whole project. |
-| `npm test` | Vitest (component tests + the `write-swa-config.mjs` unit tests). |
+| `pnpm dev` | Vite dev server, mode `dev`. |
+| `pnpm run build:dev` / `build:nonprod` / `build:prod` | Production build for that environment, then writes `dist/staticwebapp.config.json` from `public/staticwebapp.config.json` with the API origin filled into the CSP's `connect-src`. |
+| `pnpm run preview` | Serves the last build locally on port 4173. |
+| `pnpm run typecheck` | `tsc --noEmit`. |
+| `pnpm run lint` | ESLint over the whole project. |
+| `pnpm test` | Vitest (component tests + the `write-swa-config.mjs` unit tests). |
 
 ## Pointing the admin console at a local API
 
@@ -86,7 +86,7 @@ python scripts/dev_server.py
 
 It brings up an embedded PostgreSQL, runs migrations, seeds `seed/launch-bundle.json`, creates an admin user,
 and starts the API on `http://127.0.0.1:8000` (prints the admin email/password to log in with). `admin/.env.dev`
-already points `VITE_API_BASE_URL` at that address, so `npm run dev` in `admin/` just works against it.
+already points `VITE_API_BASE_URL` at that address, so `pnpm dev` in `admin/` just works against it.
 
 ## `tools/check-site.mjs`
 
@@ -110,10 +110,30 @@ Exits non-zero and prints every problem found if anything's wrong. `ci.yml` runs
 
 Runs on every pull request and on push to `main`. Two independent jobs, no deploy:
 
-- **admin**: `npm ci`, then `npm run lint`, `npm run typecheck`, `npm test`, `npm run build:dev`.
+- **admin**: `pnpm install --frozen-lockfile`, then `pnpm run lint`, `pnpm run typecheck`, `pnpm test`, `pnpm run build:dev`.
 - **site**: `node tools/check-site.mjs`.
 
-## Deploy (`.github/workflows/deploy.yml`)
+## Deploy to GitHub Pages (`.github/workflows/pages.yml`)
+
+Every push to `main` (and a manual run) publishes the public site at the root of the Pages address and the admin console
+under `/admin/`. The console is built with hash routing, so its pages are `https://<domain>/admin/#/...`, because Pages
+cannot rewrite unknown paths. Pages also cannot send response headers, so the console's Content-Security-Policy is
+embedded in `index.html` as a `<meta>` tag (`admin/scripts/write-pages-csp.mjs`); that loses `frame-ancestors`, which means
+the console could be framed by another site. Keep this in mind before putting real content-admin work behind it.
+
+**One-time setup (repository settings, done by a person):**
+
+1. Settings -> Pages -> Build and deployment -> Source: **GitHub Actions**. A private repository needs a GitHub plan
+   that includes Pages for private repos.
+2. Settings -> Secrets and variables -> Actions -> **Variables**: `API_BASE_URL` (required, the API the console talks to)
+   and optionally `ADMIN_ENV_NAME` (`dev`, `nonprod` or `prod`; default `dev`).
+3. Settings -> Pages -> **Custom domain**, then create the DNS record GitHub shows. Tick "Enforce HTTPS" when it offers it.
+4. Add the final `https://<domain>` origin to the API's allowed CORS origins (`extra_cors_origins` in the matching
+   `infra/envs/<env>/<env>.tfvars`, then `terraform apply`). Without it the browser blocks every call the console makes.
+
+The Azure route (`deploy.yml`) is now manual-only (workflow_dispatch) and needs the Azure setup below.
+
+## Deploy to Azure Static Web Apps (`.github/workflows/deploy.yml`, manual)
 
 Builds `admin/dist` and deploys it, plus `site/`, to two separate Azure Static Web Apps, using Azure OIDC
 login (`azure/login@v2`) — no stored Azure credentials, and Static Web Apps deployment tokens are fetched at
@@ -121,7 +141,7 @@ deploy time via `az staticwebapp secrets list` and masked in the logs rather tha
 
 **Triggers:**
 - `workflow_dispatch` with an `environment` input (`nonprod` or `prod`) — deploy on demand to either.
-- `push` to `main` — always deploys to `nonprod` automatically. Deploying to `prod` is manual-only.
+- No push trigger: pushes to `main` publish to GitHub Pages instead.
 
 **Manual setup a human must do in the GitHub repo settings before this workflow can run** (not done by this
 PR — there's no way to create GitHub Environments or Azure federated credentials from a commit):

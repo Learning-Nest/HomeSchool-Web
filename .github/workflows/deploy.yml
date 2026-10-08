@@ -3,11 +3,11 @@ name: Deploy
 # Deploys the admin console (admin/dist) and the public site (site/) to two separate Azure Static Web Apps.
 #
 # Triggers:
-#   - workflow_dispatch with an `environment` input (nonprod|prod) — deploy on demand to either environment.
-#   - push to main — always deploys to nonprod automatically. Deploying to prod is manual-only (workflow_dispatch).
+#   - workflow_dispatch with an `environment` input (dev|nonprod|prod) — deploy on demand to either environment.
+#   - (Pushes to main no longer deploy here; they publish to GitHub Pages through pages.yml.)
 #
 # GitHub Environments:
-#   This workflow runs its deploy job under the GitHub *environment* named `nonprod` or `prod`. Both must be
+#   This workflow runs its deploy job under the GitHub *environment* named `dev`, `nonprod` or `prod`. All must be
 #   created under the repository's Settings -> Environments before this workflow can deploy.
 #     - `nonprod`: no protection rules needed.
 #     - `prod`: add required reviewers in the GitHub UI (Settings -> Environments -> prod -> Deployment
@@ -38,10 +38,11 @@ on:
         type: choice
         required: true
         options:
+          - dev
           - nonprod
           - prod
-  push:
-    branches: [main]
+  # No push trigger any more: pushes to main publish to GitHub Pages (pages.yml). This workflow is the manual route
+  # to the Azure Static Web Apps, kept for the day the console moves back to Azure.
 
 permissions:
   id-token: write
@@ -76,18 +77,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: admin/package-lock.json
+          cache: pnpm
+          cache-dependency-path: admin/pnpm-lock.yaml
 
       - name: Check public site pages
         run: node tools/check-site.mjs
 
       - name: Install admin dependencies
         working-directory: admin
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Resolve API base URL override
         run: |
@@ -97,7 +102,7 @@ jobs:
 
       - name: Build admin console
         working-directory: admin
-        run: npm run "build:${TARGET_ENV}"
+        run: pnpm run "build:${TARGET_ENV}"
 
       - name: Azure login (OIDC)
         uses: azure/login@v2

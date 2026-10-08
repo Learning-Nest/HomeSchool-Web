@@ -1,0 +1,104 @@
+name: Pages
+
+# Publishes the public site (site/) at the root and the admin console (admin/) under /admin/ to GitHub Pages.
+#
+# Triggers: every push to main, and on demand (workflow_dispatch).
+#
+# One-time setup in the repository settings (a workflow cannot do these for you):
+#   1. Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#   2. Settings -> Secrets and variables -> Actions -> Variables (repository variables, not secrets):
+#        API_BASE_URL   (required)  the API the console talks to, e.g. https://<api-fqdn>
+#        ADMIN_ENV_NAME (optional)  dev | nonprod | prod; picks admin/.env.<name> and the badge. Default: dev.
+#   3. Custom domain: Settings -> Pages -> Custom domain, then the DNS record GitHub shows you. Then add that
+#      https:// origin to the API's allowed CORS origins (infra: extra_cors_origins), or the console cannot log in.
+#
+# GitHub Pages cannot send response headers or rewrite unknown paths, so the console is built with hash routing
+# (https://<domain>/admin/#/...) and its Content-Security-Policy is embedded as a <meta> tag.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site and admin console
+    runs-on: ubuntu-latest
+    env:
+      ADMIN_ENV_NAME: ${{ vars.ADMIN_ENV_NAME || 'dev' }}
+      VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+      VITE_BASE_PATH: /admin/
+      VITE_ROUTER_MODE: hash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require the API URL
+        run: |
+          if [ -z "$VITE_API_BASE_URL" ]; then
+            echo "::error::Set the repository variable API_BASE_URL (Settings -> Secrets and variables -> Actions -> Variables)."
+            exit 1
+          fi
+          case "$ADMIN_ENV_NAME" in dev|nonprod|prod) ;; *) echo "::error::ADMIN_ENV_NAME must be dev, nonprod or prod"; exit 1 ;; esac
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: admin/pnpm-lock.yaml
+
+      - name: Check public site pages
+        run: node tools/check-site.mjs
+
+      - name: Install admin dependencies
+        working-directory: admin
+        run: pnpm install --frozen-lockfile
+
+      - name: Test admin console
+        working-directory: admin
+        run: pnpm test
+
+      - name: Build admin console
+        working-directory: admin
+        run: |
+          pnpm exec vite build --mode "$ADMIN_ENV_NAME"
+          node scripts/write-pages-csp.mjs "$ADMIN_ENV_NAME"
+
+      - name: Assemble the Pages site
+        run: |
+          mkdir _site
+          cp -r site/. _site/
+          rm -f _site/staticwebapp.config.json
+          mkdir _site/admin
+          cp -r admin/dist/. _site/admin/
+          rm -f _site/admin/staticwebapp.config.json
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

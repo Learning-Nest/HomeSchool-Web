@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router-dom'
 import { ApiClient } from './api/client'
 import { sessionStorageStore } from './api/sessionStore'
 import { AuthProvider } from './auth/AuthContext'
@@ -22,7 +22,8 @@ if (config.error) {
   )
 } else {
   const client = new ApiClient({ baseUrl: config.apiBaseUrl, store: sessionStorageStore })
-  const router = createBrowserRouter(appRoutes)
+  // GitHub Pages cannot send unknown paths back to index.html, so that build uses #/ URLs (VITE_ROUTER_MODE=hash).
+  const router = import.meta.env.VITE_ROUTER_MODE === 'hash' ? createHashRouter(appRoutes) : createBrowserRouter(appRoutes)
   root.render(
     <StrictMode>
       <AuthProvider client={client}>
