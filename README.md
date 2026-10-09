@@ -23,7 +23,7 @@ Everyone signs in at the same address; what they see depends on their platform r
 | --- | --- | --- |
 | `educator` | My activities, New activity | Build activities in the guided builder (number of exercises, kind of each exercise, skills per exercise, pictures on exercises, choices and match/order items), check them, and send them for review. Only their own drafts; once sent they are read-only until a reviewer answers. |
 | `content_admin` | Everything above for all activities, plus Dashboard, Review queue, Educators, Activity log, Import | Publish, send back with a note (required), archive, edit anyone's activity in the JSON editor, see what each educator did and export the log as CSV. |
-| `super_admin` | Everything `content_admin` sees | Also invite educators (a temporary password is emailed; it must be replaced at first sign-in) and disable or enable their accounts. |
+| `super_admin` | Everything `content_admin` sees | Also invite educators (a temporary password is emailed; it must be replaced at first sign-in), resend the invitation to anyone who has not signed in yet (a fresh 7-day temporary password replaces the old one), and disable or enable their accounts. |
 
 The builder saves drafts by itself (a few seconds after the last change) without requiring them to be complete. "Check this
 activity" runs the same validation the server runs on submit and records the result; any later change means checking again,
