@@ -182,6 +182,7 @@ export const educatorSummary = (overrides: Record<string, unknown> = {}) => ({
   submissions: 2,
   returned: 1,
   last_active_at: '2026-09-02T09:00:00Z',
+  invite_pending: false,
   ...overrides,
 })
 

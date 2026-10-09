@@ -83,6 +83,80 @@ describe('EducatorsPage', () => {
     await waitFor(() => expect(patched).toEqual({ active: false }))
   })
 
+  it('offers “Resend invitation” only for active educators who have not signed in yet', async () => {
+    const rows = () =>
+      json(200, [
+        educatorSummary({ id: 'e1', full_name: 'Eve Educator', invite_pending: false }),
+        educatorSummary({ id: 'e2', full_name: 'Newt New', email: 'newt@example.com', invite_pending: true, last_active_at: null }),
+        educatorSummary({ id: 'e3', full_name: 'Dan Disabled', email: 'dan@example.com', active: false, invite_pending: true }),
+      ])
+    const { client } = makeClient({ 'GET /v1/admin/educators': rows }, admin('super_admin'))
+    renderApp(client, '/educators')
+    await screen.findByRole('link', { name: 'Newt New' })
+    expect(screen.getAllByRole('button', { name: /Resend invitation/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /Resend invitation\s*Newt New/ })).toBeTruthy()
+  })
+
+  it('does not show “Resend invitation” to anyone but a super admin', async () => {
+    const rows = () => json(200, [educatorSummary({ invite_pending: true, last_active_at: null })])
+    const { client } = makeClient({ 'GET /v1/admin/educators': rows }, admin('content_admin'))
+    renderApp(client, '/educators')
+    await screen.findByRole('link', { name: 'Eve Educator' })
+    expect(screen.queryByRole('button', { name: /Resend invitation/ })).toBeNull()
+  })
+
+  it('resends an invitation and says it was sent', async () => {
+    let posted = 0
+    const rows = () => json(200, [educatorSummary({ invite_pending: true, last_active_at: null })])
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': rows,
+        'POST /v1/admin/educators/e1/invite': () => {
+          posted += 1
+          return json(200, { educator: educatorSummary({ invite_pending: true }), email_sent: true })
+        },
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Resend invitation\s*Eve Educator/ }))
+    expect((await screen.findByRole('status')).textContent).toMatch(/Invitation sent again to Eve Educator.*7 days/)
+    expect(posted).toBe(1)
+    expect(document.body.textContent).not.toMatch(/temporary password:\s*\S+/i)
+  })
+
+  it('says plainly when a resent invitation could not be emailed', async () => {
+    const rows = () => json(200, [educatorSummary({ invite_pending: true, last_active_at: null })])
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': rows,
+        'POST /v1/admin/educators/e1/invite': () => json(200, { educator: educatorSummary(), email_sent: false }),
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Resend invitation/ }))
+    const status = await screen.findByRole('status')
+    expect(status.textContent).toContain('could not be sent')
+    expect(status.textContent).toContain('email settings')
+  })
+
+  it('shows the server’s answer when the educator has already signed in', async () => {
+    const rows = () => json(200, [educatorSummary({ invite_pending: true, last_active_at: null })])
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': rows,
+        'POST /v1/admin/educators/e1/invite': () =>
+          json(409, { error: { code: 'conflict', message: 'This educator has already signed in.', request_id: 'r1' } }),
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Resend invitation/ }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('sends an educator who types the address away from the admin pages', async () => {
     const { client, calls } = makeClient({ 'GET /v1/admin/activities': () => json(200, []) }, admin('educator'))
     const { router } = renderApp(client, '/educators')

@@ -10,6 +10,7 @@ import type {
   BundleReport,
   EducatorActivity,
   EducatorCreated,
+  EducatorInvited,
   EducatorSummary,
   Level,
   Skill,
@@ -98,6 +99,7 @@ export function createAdminApi(client: ApiClient) {
       client.get<EducatorActivity>(`/admin/educators/${seg(id)}/activity`, { query: { ...range }, signal }),
     createEducator: (email: string, fullName: string) =>
       client.post<EducatorCreated>('/admin/educators', { email, full_name: fullName }),
+    resendInvitation: (id: string) => client.post<EducatorInvited>(`/admin/educators/${seg(id)}/invite`, {}),
     setEducatorActive: (id: string, active: boolean) =>
       client.patch<EducatorSummary>(`/admin/educators/${seg(id)}`, { active }),
 

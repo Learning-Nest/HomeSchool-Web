@@ -147,6 +147,13 @@ export interface EducatorSummary {
   submissions: number
   returned: number
   last_active_at: string | null
+  /** True until they have signed in with a password of their own: an unused invitation can be resent. */
+  invite_pending: boolean
+}
+
+export interface EducatorInvited {
+  educator: EducatorSummary
+  email_sent: boolean
 }
 
 export interface EducatorCreated {

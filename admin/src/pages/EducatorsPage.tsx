@@ -1,6 +1,6 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import type { EducatorCreated, EducatorSummary } from '../api/types'
+import type { EducatorCreated, EducatorInvited, EducatorSummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ErrorPanel } from '../components/ErrorPanel'
@@ -17,7 +17,15 @@ export function inviteMessage(result: EducatorCreated): string {
   }
   return result.email_sent
     ? `Invitation sent to ${who}. The email holds a temporary password that works for 7 days.`
-    : `The account for ${who} was created, but the invitation email could not be sent. Ask them to use “Forgot password” on the sign-in screen of the app, or try the invitation again later.`
+    : `The account for ${who} was created, but the invitation email could not be sent. Once the server’s email settings work, use “Resend invitation” next to their name in the table below.`
+}
+
+/** What happened when an invitation was sent again. */
+export function resendMessage(result: EducatorInvited): string {
+  const who = `${result.educator.full_name} (${result.educator.email})`
+  return result.email_sent
+    ? `Invitation sent again to ${who}. The new temporary password works for 7 days and replaces the earlier one.`
+    : `The invitation to ${who} could not be sent, so nothing has reached them. The server’s email settings need attention; then try “Resend invitation” again.`
 }
 
 export function EducatorsPage() {
@@ -30,7 +38,9 @@ export function EducatorsPage() {
   const [name, setName] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<Error | null>(null)
-  const [invited, setInvited] = useState<EducatorCreated | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resendError, setResendError] = useState<Error | null>(null)
   const [toggle, setToggle] = useState<EducatorSummary | null>(null)
   const [toggling, setToggling] = useState(false)
   const [toggleError, setToggleError] = useState<Error | null>(null)
@@ -39,10 +49,10 @@ export function EducatorsPage() {
     event.preventDefault()
     setInviting(true)
     setInviteError(null)
-    setInvited(null)
+    setNotice(null)
     try {
       const result = await api.createEducator(email.trim(), name.trim())
-      setInvited(result)
+      setNotice(inviteMessage(result))
       setEmail('')
       setName('')
       reload()
@@ -50,6 +60,20 @@ export function EducatorsPage() {
       setInviteError(e instanceof Error ? e : new Error(String(e)))
     } finally {
       setInviting(false)
+    }
+  }
+
+  async function resend(u: EducatorSummary) {
+    setResending(u.id)
+    setResendError(null)
+    setNotice(null)
+    try {
+      setNotice(resendMessage(await api.resendInvitation(u.id)))
+    } catch (e) {
+      setResendError(e instanceof Error ? e : new Error(String(e)))
+    } finally {
+      setResending(null)
+      reload()
     }
   }
 
@@ -93,14 +117,15 @@ export function EducatorsPage() {
             </div>
           </form>
           {inviteError && <ErrorPanel error={inviteError} messages={{ conflict: 'This account already has a platform role.' }} />}
-          {invited && (
-            <p className="panel panel-success" role="status">
-              {inviteMessage(invited)}
-            </p>
-          )}
         </section>
       )}
 
+      {notice && (
+        <p className="panel panel-success" role="status">
+          {notice}
+        </p>
+      )}
+      {resendError && <ErrorPanel error={resendError} />}
       {toggleError && <ErrorPanel error={toggleError} />}
       {error && <ErrorPanel error={error} onRetry={reload} />}
       {!error && !data && <Loading label="Loading educators…" />}
@@ -151,6 +176,20 @@ export function EducatorsPage() {
                         {u.active ? 'Disable' : 'Enable'}
                         <span className="visually-hidden"> {u.full_name}</span>
                       </button>
+                      {u.active && u.invite_pending && (
+                        <>
+                          {' '}
+                          <button
+                            type="button"
+                            className="btn btn-small"
+                            disabled={resending !== null}
+                            onClick={() => void resend(u)}
+                          >
+                            {resending === u.id ? 'Sending…' : 'Resend invitation'}
+                            <span className="visually-hidden"> {u.full_name}</span>
+                          </button>
+                        </>
+                      )}
                     </td>
                   )}
                 </tr>
