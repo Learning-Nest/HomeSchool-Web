@@ -94,7 +94,7 @@ describe('activity editor', () => {
 
   it.each([
     ['draft', ['Send to review', 'Archive']],
-    ['in_review', ['Back to draft', 'Publish', 'Archive']],
+    ['in_review', ['Send back with a note', 'Publish', 'Archive']],
     ['published', ['Archive']],
     ['archived', ['Restore as draft']],
   ])('offers only the legal transitions from %s', async (status, labels) => {

@@ -107,3 +107,96 @@ export const activityDetail = (overrides: Record<string, unknown> = {}) => ({
   },
   ...overrides,
 })
+
+// ---- fixtures for the educator portal --------------------------------------------------------------------------
+
+export const subjectsFixture = [
+  { code: 'MAT', name: 'Mathematics', display_order: 1 },
+  { code: 'LIT', name: 'Literacy', display_order: 2 },
+]
+export const levelsFixture = [
+  { code: 'L1', name: 'Level 1', indicative_age: '5-6' },
+  { code: 'L2', name: 'Level 2', indicative_age: '6-7' },
+  { code: 'L3', name: 'Level 3', indicative_age: '7-8' },
+]
+export const skillsFixture = [
+  { code: 'MAT.COUNT.TO10', subject_code: 'MAT', level_code: 'L1', name: 'Count to ten', prerequisites: [] },
+  { code: 'MAT.ADD.TO10', subject_code: 'MAT', level_code: 'L2', name: 'Add within ten', prerequisites: [] },
+]
+
+export const assetFixture = (overrides: Record<string, unknown> = {}) => ({
+  id: 'img1',
+  activity_id: 'a1',
+  content_type: 'image/png',
+  bytes: 2048,
+  width: 64,
+  height: 64,
+  sha256: 'a'.repeat(64),
+  created_at: '2026-09-01T10:00:00Z',
+  url: 'https://blob.test/img1.png?sig=x',
+  ...overrides,
+})
+
+/** A draft in the v2 format that the guided builder can open. */
+export const builderDetail = (overrides: Record<string, unknown> = {}) => ({
+  ...activitySummary({ created_by_name: 'Eve Educator', last_edited_by_name: 'Eve Educator' }),
+  skills: [],
+  definition: {
+    schema_version: 2,
+    title: 'Count to ten',
+    subject: 'MAT',
+    level_from: 'L1',
+    level_to: 'L2',
+    duration_min: 15,
+    steps: [
+      { id: 's1', type: 'instruction', prompt: 'Count the apples.' },
+      {
+        id: 's2',
+        type: 'single_choice',
+        prompt: 'How many apples?',
+        config: {
+          options: [
+            { id: 'a', label: 'Three' },
+            { id: 'b', label: 'Ten' },
+          ],
+        },
+        key: { correct: ['b'] },
+        skills: [{ code: 'MAT.COUNT.TO10', weight: 1 }],
+      },
+    ],
+  },
+  ...overrides,
+})
+
+export const educatorSummary = (overrides: Record<string, unknown> = {}) => ({
+  id: 'e1',
+  email: 'eve@example.com',
+  full_name: 'Eve Educator',
+  active: true,
+  platform_role: 'educator',
+  created_at: '2026-08-01T09:00:00Z',
+  activities: 3,
+  drafts: 1,
+  in_review: 1,
+  published: 1,
+  submissions: 2,
+  returned: 1,
+  last_active_at: '2026-09-02T09:00:00Z',
+  ...overrides,
+})
+
+export const eventFixture = (overrides: Record<string, unknown> = {}) => ({
+  id: 'ev1',
+  at: '2026-09-02T09:00:00Z',
+  action: 'submitted',
+  actor_id: 'e1',
+  actor_name: 'Eve Educator',
+  activity_id: 'a1',
+  activity_slug: 'count-to-ten',
+  activity_title: 'Count to ten',
+  version: 1,
+  status_from: 'draft',
+  status_to: 'in_review',
+  detail: {},
+  ...overrides,
+})

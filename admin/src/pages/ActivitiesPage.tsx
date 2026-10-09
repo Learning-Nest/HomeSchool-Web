@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import type { AdminActivitySummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { Loading } from '../components/Loading'
@@ -11,28 +12,42 @@ import { useRequest } from '../hooks/useRequest'
 
 const PAGE_SIZE = 25
 
+/** Small tags next to the status that tell an author what to do next. */
+function Flags({ a }: { a: AdminActivitySummary }) {
+  if (a.status !== 'draft') return null
+  if (a.review_note) return <span className="flag flag-warn">Sent back</span>
+  if (a.is_validated) return <span className="flag flag-ok">Checked</span>
+  return null
+}
+
 export function ActivitiesPage() {
-  useDocumentTitle('Activities')
-  const { api } = useAuth()
+  const { api, isAdmin } = useAuth()
+  useDocumentTitle(isAdmin ? 'Activities' : 'My activities')
   const [params, setParams] = useSearchParams()
   const status = params.get('status') ?? ''
   const subject = params.get('subject') ?? ''
+  const author = isAdmin ? (params.get('author') ?? '') : ''
   const q = params.get('q') ?? ''
   const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1)
 
   // The API returns a bare list without a total, so ask for one extra row to learn whether a next page exists.
   const loadRows = useCallback(
     (signal: AbortSignal) =>
-      api.listActivities({ status, subject, q, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE }, signal),
-    [api, status, subject, q, page],
+      api.listActivities({ status, subject, author, q, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE }, signal),
+    [api, status, subject, author, q, page],
   )
   const { data, error, loading, reload } = useRequest(loadRows)
   const loadSubjects = useCallback((signal: AbortSignal) => api.subjects(signal), [api])
   const { data: subjects } = useRequest(loadSubjects)
+  const loadEducators = useCallback(
+    (signal: AbortSignal) => (isAdmin ? api.listEducators(signal) : Promise.resolve([])),
+    [api, isAdmin],
+  )
+  const { data: educators } = useRequest(loadEducators)
 
   const rows = useMemo(() => (data ? data.slice(0, PAGE_SIZE) : []), [data])
   const hasNext = (data?.length ?? 0) > PAGE_SIZE
-  const filtered = status !== '' || subject !== '' || q !== ''
+  const filtered = status !== '' || subject !== '' || q !== '' || author !== ''
 
   function update(changes: Record<string, string>) {
     const next = new URLSearchParams(params)
@@ -46,7 +61,12 @@ export function ActivitiesPage() {
 
   return (
     <>
-      <h1>Activities</h1>
+      <div className="section-head">
+        <h1>{isAdmin ? 'Activities' : 'My activities'}</h1>
+        <Link className="btn btn-primary" to="/activities/new">
+          New activity
+        </Link>
+      </div>
       <form
         className="filters"
         role="search"
@@ -79,6 +99,20 @@ export function ActivitiesPage() {
             ))}
           </select>
         </label>
+        {isAdmin && (
+          <label className="field">
+            <span className="field-label">Added by</span>
+            <select value={author} onChange={(e) => update({ author: e.target.value })}>
+              <option value="">Anyone</option>
+              {author && !educators?.some((u) => u.id === author) && <option value={author}>Selected person</option>}
+              {educators?.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="field field-grow">
           <span className="field-label">Search title or slug</span>
           <input key={q} type="search" name="q" defaultValue={q} maxLength={80} />
@@ -99,7 +133,11 @@ export function ActivitiesPage() {
         <div aria-busy={loading}>
           {rows.length === 0 ? (
             <p className="panel">
-              {filtered ? 'No activities match these filters.' : 'There are no activities yet. Import a bundle to add some.'}
+              {filtered
+                ? 'No activities match these filters.'
+                : isAdmin
+                  ? 'There are no activities yet. Start a new one or import a bundle.'
+                  : 'You have not started any activities yet. Choose “New activity” to begin.'}
             </p>
           ) : (
             <div className="table-wrap" role="region" aria-label="Activities table" tabIndex={0}>
@@ -116,28 +154,38 @@ export function ActivitiesPage() {
                     <th scope="col" className="num">
                       Version
                     </th>
-                    <th scope="col">Updated</th>
+                    {isAdmin && <th scope="col">Added by</th>}
+                    <th scope="col">Last edited</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((a) => (
-                    <tr key={a.id}>
-                      <th scope="row">
-                        <Link to={`/activities/${a.id}`}>{a.title}</Link>
-                        <span className="slug">{a.slug}</span>
-                      </th>
-                      <td>{a.subject_code}</td>
-                      <td>{levelRange(a.level_from, a.level_to)}</td>
-                      <td className="num">{a.duration_min} min</td>
-                      <td>
-                        <StatusBadge status={a.status} />
-                      </td>
-                      <td className="num">{a.version}</td>
-                      <td>
-                        <time dateTime={a.updated_at}>{formatDateTime(a.updated_at)}</time>
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((a) => {
+                    const editedAt = a.last_edited_at ?? a.updated_at
+                    return (
+                      <tr key={a.id}>
+                        <th scope="row">
+                          <Link to={`/activities/${a.id}`}>{a.title}</Link>
+                          <span className="slug">{a.slug}</span>
+                        </th>
+                        <td>{a.subject_code}</td>
+                        <td>{levelRange(a.level_from, a.level_to)}</td>
+                        <td className="num">{a.duration_min} min</td>
+                        <td>
+                          <StatusBadge status={a.status} /> <Flags a={a} />
+                        </td>
+                        <td className="num">{a.version}</td>
+                        {isAdmin && (
+                          <td>
+                            {a.created_by_name ?? <span className="muted">{a.source === 'bundle' ? 'Imported' : '—'}</span>}
+                          </td>
+                        )}
+                        <td>
+                          <time dateTime={editedAt}>{formatDateTime(editedAt)}</time>
+                          {a.last_edited_by_name && <span className="slug">by {a.last_edited_by_name}</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

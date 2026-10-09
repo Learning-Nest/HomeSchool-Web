@@ -1,12 +1,16 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
-/** Route guard: everything inside needs a signed-in content admin; sessions for other accounts are never created. */
+/** Pages for content admins only (review, educators, activity log, import). Educators are sent to their own list. */
 export function RequireAdmin() {
-  const { user } = useAuth()
-  const location = useLocation()
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
-  }
+  const { isAdmin } = useAuth()
+  if (!isAdmin) return <Navigate to="/activities" replace />
+  return <Outlet />
+}
+
+/** Pages for super admins only (creating or disabling educators). */
+export function RequireSuperAdmin() {
+  const { isSuperAdmin } = useAuth()
+  if (!isSuperAdmin) return <Navigate to="/" replace />
   return <Outlet />
 }

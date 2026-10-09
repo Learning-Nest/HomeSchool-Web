@@ -7,6 +7,8 @@ interface Props {
   cancelLabel?: string
   danger?: boolean
   busy?: boolean
+  /** Keeps the confirm button off until the dialog's own inputs are filled in. */
+  confirmDisabled?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,7 +16,7 @@ interface Props {
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
 
 /** A modal that keeps keyboard focus inside, closes on Escape and gives focus back to where it came from. */
-export function ConfirmDialog({ title, children, confirmLabel, cancelLabel = 'Cancel', danger, busy, onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ title, children, confirmLabel, cancelLabel = 'Cancel', danger, busy, confirmDisabled, onConfirm, onCancel }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
 
@@ -53,7 +55,7 @@ export function ConfirmDialog({ title, children, confirmLabel, cancelLabel = 'Ca
           <button type="button" className="btn" ref={cancelRef} onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </button>
-          <button type="button" className={danger ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirm} disabled={busy}>
+          <button type="button" className={danger ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirm} disabled={busy || confirmDisabled}>
             {busy ? 'Working…' : confirmLabel}
           </button>
         </div>

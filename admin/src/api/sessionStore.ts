@@ -10,6 +10,8 @@ export interface Tokens {
 export interface StoredSession {
   tokens: Tokens
   user: User
+  /** Signed in with a temporary password: the next thing the person must do is choose a new one. */
+  tempLogin?: boolean
 }
 
 export interface SessionStore {

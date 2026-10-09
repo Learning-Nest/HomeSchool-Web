@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/errors'
-import { NotAdminError, useAuth } from '../auth/AuthContext'
+import { NotStaffError, useAuth } from '../auth/AuthContext'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { EnvBadge } from '../components/EnvBadge'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -42,26 +42,26 @@ export function LoginPage() {
     <main className="login-page" id="main">
       <form className="login-card" onSubmit={submit} aria-labelledby="login-heading">
         <div className="login-brand">
-          <span className="brand">HomeSchooling Admin</span>
+          <span className="brand">HomeSchooling Content</span>
           <EnvBadge />
         </div>
         <h1 id="login-heading">Sign in</h1>
-        <p className="muted">For content administrators only.</p>
+        <p className="muted">For educators and content administrators.</p>
         {notice && (
           <p className="panel panel-info" role="status">
             {notice}
           </p>
         )}
-        {error instanceof NotAdminError && (
+        {error instanceof NotStaffError && (
           <div className="panel panel-error" role="alert">
             <p className="panel-title">This account does not have access to the content console.</p>
             <p>
-              The password was correct, but only content administrators can sign in here. Family accounts use the
-              app. Ask a super admin if you need access.
+              The password was correct, but only educators and content administrators can sign in here. Family
+              accounts use the app. Ask a super admin if you need educator access.
             </p>
           </div>
         )}
-        {error && !(error instanceof NotAdminError) && <ErrorPanel error={error} />}
+        {error && !(error instanceof NotStaffError) && <ErrorPanel error={error} />}
         <label className="field">
           <span className="field-label">Email</span>
           <input

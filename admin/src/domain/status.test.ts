@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isActivityStatus, legalTransitions, needsConfirmation, STATUSES, transitionLabel } from './status'
+import { isActivityStatus, legalTransitions, needsConfirmation, needsNote, STATUSES, transitionLabel } from './status'
 
 describe('status transitions', () => {
   it('offers exactly the server-side transitions', () => {
@@ -30,7 +30,14 @@ describe('status transitions', () => {
 
   it('words the buttons by intent', () => {
     expect(transitionLabel('draft', 'in_review')).toBe('Send to review')
-    expect(transitionLabel('in_review', 'draft')).toBe('Back to draft')
+    expect(transitionLabel('in_review', 'draft')).toBe('Send back with a note')
     expect(transitionLabel('archived', 'draft')).toBe('Restore as draft')
+  })
+
+  it('asks for a note only when a reviewer sends an activity back', () => {
+    expect(needsNote('in_review', 'draft')).toBe(true)
+    expect(needsNote('archived', 'draft')).toBe(false)
+    expect(needsNote('draft', 'in_review')).toBe(false)
+    expect(needsNote('in_review', 'published')).toBe(false)
   })
 })

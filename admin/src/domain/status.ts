@@ -23,6 +23,11 @@ export function needsConfirmation(target: ActivityStatus): boolean {
   return target === 'published' || target === 'archived'
 }
 
+/** Sending an activity back to its author needs a note, so they know what to change. */
+export function needsNote(from: string, target: ActivityStatus): boolean {
+  return from === 'in_review' && target === 'draft'
+}
+
 export function statusLabel(status: string): string {
   switch (status) {
     case 'draft':
@@ -42,5 +47,6 @@ export function transitionLabel(from: string, target: ActivityStatus): string {
   if (target === 'in_review') return 'Send to review'
   if (target === 'published') return 'Publish'
   if (target === 'archived') return 'Archive'
+  if (from === 'in_review') return 'Send back with a note'
   return from === 'archived' ? 'Restore as draft' : 'Back to draft'
 }

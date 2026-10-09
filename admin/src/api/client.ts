@@ -20,6 +20,10 @@ export interface RequestOptions {
   signal?: AbortSignal
   /** Send the bearer token (default). Login, refresh and logout do not. */
   auth?: boolean
+  /** A file sent as the raw request body (image upload). Mutually exclusive with `body`. */
+  raw?: { data: Blob; contentType: string }
+  /** 'blob' returns the response body as a file (CSV export) instead of parsing JSON. */
+  responseType?: 'json' | 'blob'
 }
 
 function requestId(): string {
@@ -69,6 +73,20 @@ export class ApiClient {
 
   startSession(out: TokenOut): void {
     this.setSession(out)
+  }
+
+  /** True while the stored session came from a temporary password and no new password has been set yet. */
+  get mustChangePassword(): boolean {
+    return this.session?.tempLogin === true
+  }
+
+  /** Sets a new password. The server signs every other session out and answers with a fresh token pair. */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const out = await this.post<TokenOut>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+    this.setSession({ ...out, temp_login: false })
   }
 
   /** Revokes a refresh token on the server without ever having used it as a session. */
@@ -126,6 +144,19 @@ export class ApiClient {
     return this.request<T>('PUT', path, { ...options, body })
   }
 
+  patch<T>(path: string, body: unknown, options: Omit<RequestOptions, 'body'> = {}): Promise<T> {
+    return this.request<T>('PATCH', path, { ...options, body })
+  }
+
+  delete(path: string, options: Omit<RequestOptions, 'body'> = {}): Promise<void> {
+    return this.request<void>('DELETE', path, options)
+  }
+
+  /** Downloads a file (for example the activity-log CSV) with the bearer token attached. */
+  download(path: string, options: Omit<RequestOptions, 'body' | 'responseType'> = {}): Promise<Blob> {
+    return this.request<Blob>('GET', path, { ...options, responseType: 'blob' })
+  }
+
   private accessToken(): string {
     if (!this.session) {
       throw new ApiError({ status: 401, code: 'unauthenticated', message: 'Not signed in.' })
@@ -177,6 +208,7 @@ export class ApiClient {
         accessExpiresAt: this.now() + out.expires_in * 1000,
       },
       user: out.user,
+      ...(out.temp_login ? { tempLogin: true } : {}),
     }
     this.store.save(this.session)
   }
@@ -194,6 +226,8 @@ export class ApiClient {
     }
     const headers: Record<string, string> = { Accept: 'application/json', 'X-Request-Id': requestId() }
     if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+    if (options.raw) headers['Content-Type'] = options.raw.contentType
+    if (options.responseType === 'blob') headers.Accept = '*/*'
     if (token) headers.Authorization = `Bearer ${token}`
 
     let response: Response
@@ -201,7 +235,7 @@ export class ApiClient {
       response = await this.fetchFn(url, {
         method,
         headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body: options.raw ? options.raw.data : options.body === undefined ? undefined : JSON.stringify(options.body),
         signal: options.signal,
       })
     } catch (e) {
@@ -209,6 +243,7 @@ export class ApiClient {
       throw networkError(this.baseUrl)
     }
 
+    if (response.ok && options.responseType === 'blob') return (await response.blob()) as T
     const text = response.status === 204 ? '' : await response.text()
     let parsed: unknown = undefined
     if (text) {

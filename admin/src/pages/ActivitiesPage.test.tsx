@@ -21,7 +21,7 @@ describe('activities list', () => {
 
     const table = await screen.findByRole('table')
     const headers = within(table).getAllByRole('columnheader').map((h) => h.textContent)
-    expect(headers).toEqual(['Title', 'Subject', 'Levels', 'Duration', 'Status', 'Version', 'Updated'])
+    expect(headers).toEqual(['Title', 'Subject', 'Levels', 'Duration', 'Status', 'Version', 'Added by', 'Last edited'])
     const row = within(table).getAllByRole('row')[1]!
     expect(within(row).getByRole('link', { name: 'Activity 1' }).getAttribute('href')).toBe('/activities/id-1')
     expect(row.textContent).toContain('L1–L2')

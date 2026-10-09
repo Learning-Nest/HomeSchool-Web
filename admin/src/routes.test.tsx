@@ -126,3 +126,75 @@ describe('error states', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 })
+
+describe('educator accounts', () => {
+  const educator = () => ({ session: storedSession(1, Date.now() + 900_000, 'educator') })
+
+  it('signs an educator in and lands on their own activities, with only their menu', async () => {
+    const { client, calls } = makeClient(
+      {
+        'POST /v1/auth/login': () => json(200, tokenOut(1, 'educator')),
+        'GET /v1/admin/activities': () => json(200, []),
+      },
+      { session: null },
+    )
+    const { router } = renderApp(client, '/')
+    await signInAs('eve@example.com', 'secret-password')
+
+    expect(await screen.findByRole('heading', { name: 'My activities' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/activities')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['My activities', 'New activity'])
+    expect(calls.some((c) => c.path === '/v1/admin/stats')).toBe(false)
+  })
+
+  it('keeps an educator out of the admin-only pages', async () => {
+    for (const path of ['/review', '/educators', '/activity-log', '/import']) {
+      const { client } = makeClient({ 'GET /v1/admin/activities': () => json(200, []) }, educator())
+      const { router, unmount } = renderApp(client, path)
+      await waitFor(() => expect(router.state.location.pathname).toBe('/activities'))
+      unmount()
+    }
+  })
+
+  it('forces a temporary password to be replaced before anything else', async () => {
+    const { client, calls } = makeClient(
+      {
+        'POST /v1/auth/login': () => json(200, { ...tokenOut(1, 'educator'), temp_login: true }),
+        'POST /v1/auth/change-password': () => json(200, tokenOut(2, 'educator')),
+        'GET /v1/admin/activities': () => json(200, []),
+      },
+      { session: null },
+    )
+    const { router } = renderApp(client, '/activities')
+    await signInAs('eve@example.com', 'temp-from-email')
+
+    expect(await screen.findByRole('heading', { name: 'Choose a new password' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/change-password')
+    expect(calls.some((c) => c.path === '/v1/admin/activities')).toBe(false)
+
+    const submit = screen.getByRole('button', { name: /Save|Change|Set/ }) as HTMLButtonElement
+    expect(submit.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Temporary password'), { target: { value: 'temp-from-email' } })
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'short' } })
+    fireEvent.change(screen.getByLabelText('New password again'), { target: { value: 'short' } })
+    expect(submit.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'a-much-longer-passphrase' } })
+    fireEvent.change(screen.getByLabelText('New password again'), { target: { value: 'a-much-longer-passphrase' } })
+    expect(submit.disabled).toBe(false)
+    fireEvent.click(submit)
+
+    expect(await screen.findByRole('heading', { name: 'My activities' })).toBeTruthy()
+    expect(calls.find((c) => c.path === '/v1/auth/change-password')?.body).toEqual({
+      current_password: 'temp-from-email',
+      new_password: 'a-much-longer-passphrase',
+    })
+    expect(client.mustChangePassword).toBe(false)
+  })
+
+  it('does not show the password page to someone who has no temporary password', async () => {
+    const { client } = makeClient({ 'GET /v1/admin/activities': () => json(200, []) }, educator())
+    const { router } = renderApp(client, '/change-password')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/activities'))
+  })
+})
