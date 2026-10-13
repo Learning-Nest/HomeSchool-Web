@@ -93,6 +93,7 @@ describe('Textbook lessons panel', () => {
     )
     await screen.findByRole('list', { name: 'Lessons this activity is in' })
     expect((screen.getByLabelText('Textbook') as HTMLSelectElement).disabled).toBe(true)
+    await waitFor(() => expect(screen.getByRole('option', { name: 'CBSE' })).toBeTruthy())
     fireEvent.change(screen.getByLabelText('Board'), { target: { value: 'CBSE' } })
     await waitFor(() => expect(screen.getByRole('option', { name: /Class 1 · Marigold 1/ })).toBeTruthy())
     fireEvent.change(screen.getByLabelText('Textbook'), { target: { value: book.code } })

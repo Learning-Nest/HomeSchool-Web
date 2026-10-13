@@ -1,6 +1,8 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { Placement } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { LessonPicker } from '../components/builder/LessonPicker'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { Loading } from '../components/Loading'
 import { MAX_STEPS, newDefinition, STEP_TYPES } from '../domain/builder'
@@ -24,6 +26,7 @@ export function NewActivityPage() {
   const [minutes, setMinutes] = useState('15')
   const [exercises, setExercises] = useState('5')
   const [firstType, setFirstType] = useState('single_choice')
+  const [lessons, setLessons] = useState<Placement[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
@@ -63,6 +66,16 @@ export function NewActivityPage() {
           firstType,
         }) as unknown as Record<string, unknown>,
       )
+      if (lessons.length > 0) {
+        try {
+          await api.setActivityLessons(
+            created.id,
+            lessons.map((p) => ({ book: p.book_code, lesson: p.lesson_position, order: p.order })),
+          )
+        } catch {
+          // The activity exists; the builder has the same lesson picker if this needs another try.
+        }
+      }
       await navigate(`/activities/${created.id}/build`, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)))
@@ -135,6 +148,38 @@ export function NewActivityPage() {
           </label>
         </div>
         <p className="muted">You can change the kind of each exercise, and the number of exercises, later.</p>
+        <fieldset className="lesson-fieldset">
+          <legend>Textbook lessons (optional)</legend>
+          <p className="muted">
+            Choose the board, textbook and lesson this activity belongs to. You can add several, for example one for each
+            board, and change them later.
+          </p>
+          {lessons.length > 0 && (
+            <ul className="placements" aria-label="Chosen lessons">
+              {lessons.map((p) => (
+                <li key={`${p.book_code}/${p.lesson_position}`}>
+                  <span>
+                    <strong>{p.board_code}</strong> · Class {p.grade} · {p.book_title} · Lesson {p.lesson_position}: {p.lesson_title}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-small"
+                    aria-label={`Remove from ${p.book_title}, lesson ${p.lesson_position}`}
+                    onClick={() => setLessons((list) => list.filter((x) => x !== p))}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <LessonPicker
+            disabled={busy}
+            onAdd={(p) =>
+              setLessons((list) => [...list.filter((x) => !(x.book_code === p.book_code && x.lesson_position === p.lesson_position)), p])
+            }
+          />
+        </fieldset>
         {problems.length > 0 && title.trim() !== '' && (
           <ul className="problems" aria-label="Problems">
             {problems.map((p) => (

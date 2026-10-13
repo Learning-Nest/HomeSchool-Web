@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react'
-import type { Board, BookDetail, BookSummary, LessonRef, Placement } from '../../api/types'
+import type { Board, LessonRef, Placement } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { useRequest } from '../../hooks/useRequest'
 import { ErrorPanel } from '../ErrorPanel'
+import { LessonPicker } from './LessonPicker'
 
 interface Props {
   activityId: string
@@ -29,22 +30,6 @@ export function LessonPlacement({ activityId, canEdit }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const [board, setBoard] = useState('')
-  const [bookCode, setBookCode] = useState('')
-  const [lesson, setLesson] = useState('')
-  const [order, setOrder] = useState('1')
-
-  const loadBooks = useCallback(
-    (signal: AbortSignal) => (board ? api.books({ board }, signal) : Promise.resolve([] as BookSummary[])),
-    [api, board],
-  )
-  const { data: books } = useRequest(loadBooks)
-  const loadBook = useCallback(
-    (signal: AbortSignal) => (bookCode ? api.book(bookCode, signal) : Promise.resolve(null as BookDetail | null)),
-    [api, bookCode],
-  )
-  const { data: book } = useRequest(loadBook)
-
   async function replace(next: LessonRef[]) {
     setBusy(true)
     setError(null)
@@ -59,18 +44,13 @@ export function LessonPlacement({ activityId, canEdit }: Props) {
     }
   }
 
-  async function add() {
-    if (!placements || !bookCode || !lesson) return
-    const pos = Number(lesson)
-    const place = Math.max(0, Math.round(Number(order)) || 0)
-    const others = toRefs(placements).filter((r) => !(r.book === bookCode && r.lesson === pos))
-    if (await replace([...others, { book: bookCode, lesson: pos, order: place }])) {
-      setLesson('')
-    }
+  async function add(p: Placement) {
+    if (!placements) return
+    const others = toRefs(placements).filter((r) => !(r.book === p.book_code && r.lesson === p.lesson_position))
+    await replace([...others, { book: p.book_code, lesson: p.lesson_position, order: p.order }])
   }
 
   const boardName = (code: string) => boards?.find((b: Board) => b.code === code)?.name ?? code
-  const bookReady = book && book.code === bookCode
 
   return (
     <section className="panel" aria-labelledby="lessons-heading">
@@ -110,73 +90,7 @@ export function LessonPlacement({ activityId, canEdit }: Props) {
         </ul>
       )}
 
-      {canEdit && placements && (
-        <form
-          className="placement-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void add()
-          }}
-        >
-          <div className="field-row">
-            <label className="field">
-              <span className="field-label">Board</span>
-              <select
-                value={board}
-                onChange={(e) => {
-                  setBoard(e.target.value)
-                  setBookCode('')
-                  setLesson('')
-                }}
-              >
-                <option value="">Choose a board</option>
-                {(boards ?? []).map((b) => (
-                  <option key={b.code} value={b.code}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Textbook</span>
-              <select
-                value={bookCode}
-                disabled={!board}
-                onChange={(e) => {
-                  setBookCode(e.target.value)
-                  setLesson('')
-                }}
-              >
-                <option value="">{board && books && books.length === 0 ? 'No textbooks for this board yet' : 'Choose a textbook'}</option>
-                {(books ?? []).map((b) => (
-                  <option key={b.code} value={b.code}>
-                    Class {b.grade} · {b.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Lesson</span>
-              <select value={lesson} disabled={!bookReady} onChange={(e) => setLesson(e.target.value)}>
-                <option value="">Choose a lesson</option>
-                {(bookReady ? book.lessons : []).map((l) => (
-                  <option key={l.position} value={l.position}>
-                    {l.position}. {l.label ? `${l.label} · ` : ''}
-                    {l.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Order in the lesson</span>
-              <input type="number" min={0} max={100000} value={order} onChange={(e) => setOrder(e.target.value)} />
-            </label>
-          </div>
-          <button type="submit" className="btn" disabled={busy || !lesson}>
-            Add to this lesson
-          </button>
-        </form>
-      )}
+      {canEdit && placements && <LessonPicker disabled={busy} onAdd={(p) => add(p)} />}
       {!canEdit && <p className="muted">This activity can no longer be changed by its author.</p>}
       {error && <ErrorPanel error={error} />}
     </section>
