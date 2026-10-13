@@ -6,6 +6,9 @@ import type {
   AdminActivitySummary,
   AdminStats,
   AssetInfo,
+  Board,
+  BookDetail,
+  BookSummary,
   Bundle,
   BundleReport,
   EducatorActivity,
@@ -13,6 +16,8 @@ import type {
   EducatorInvited,
   EducatorSummary,
   Level,
+  LessonRef,
+  Placement,
   Skill,
   StaffMe,
   Subject,
@@ -51,6 +56,17 @@ export function createAdminApi(client: ApiClient) {
     levels: (signal?: AbortSignal) => client.get<Level[]>('/curriculum/levels', { signal }),
     skills: (query: { subject?: string } = {}, signal?: AbortSignal) =>
       client.get<Skill[]>('/curriculum/skills', { query: { ...query }, signal }),
+
+    boards: (signal?: AbortSignal) => client.get<Board[]>('/curriculum/boards', { signal }),
+    books: (query: { board?: string; grade?: string; subject?: string } = {}, signal?: AbortSignal) =>
+      client.get<BookSummary[]>('/curriculum/books', { query: { ...query }, signal }),
+    book: (code: string, signal?: AbortSignal) => client.get<BookDetail>(`/curriculum/books/${seg(code)}`, { signal }),
+    /** Which lessons (of which textbooks) an activity belongs to. */
+    activityLessons: (id: string, signal?: AbortSignal) =>
+      client.get<Placement[]>(`/admin/activities/${seg(id)}/lessons`, { signal }),
+    /** Replaces ALL of the activity's lesson links with this list. */
+    setActivityLessons: (id: string, lessons: LessonRef[]) =>
+      client.put<Placement[]>(`/admin/activities/${seg(id)}/lessons`, { lessons }),
 
     listActivities: (query: ActivityQuery, signal?: AbortSignal) =>
       client.get<AdminActivitySummary[]>('/admin/activities', { query: { ...query }, signal }),

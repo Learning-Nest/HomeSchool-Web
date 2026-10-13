@@ -3,6 +3,7 @@ import { Link, useBlocker, useParams } from 'react-router-dom'
 import type { AdminActivityDetail, AssetInfo, Level, Skill, Subject, ValidationResult } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { BuilderProvider, type BuilderEnv } from '../components/builder/BuilderContext'
+import { LessonPlacement } from '../components/builder/LessonPlacement'
 import { StepCard } from '../components/builder/StepCard'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ErrorPanel } from '../components/ErrorPanel'
@@ -350,6 +351,8 @@ function Builder({ initial, skills, subjects, levels, initialAssets }: BuilderPr
               Web address name: <code>{detail.slug}</code> (it cannot be changed).
             </p>
           </section>
+
+          <LessonPlacement activityId={detail.id} canEdit={detail.status === 'draft' || isAdmin} />
 
           <section aria-labelledby="exercises-heading">
             <div className="section-head">

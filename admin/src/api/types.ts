@@ -182,3 +182,48 @@ export interface EducatorActivity {
   activities: AdminActivitySummary[]
   events: ActivityEvent[]
 }
+
+export interface Board {
+  code: string
+  name: string
+}
+
+export interface BookSummary {
+  code: string
+  board_code: string
+  grade: string
+  subject_code: string
+  title: string
+  publisher: string | null
+  edition_year: number | null
+  level_code: string | null
+  lesson_count: number
+}
+
+export interface BookLesson {
+  position: number
+  label: string | null
+  title: string
+  activity_count: number
+}
+
+export interface BookDetail extends BookSummary {
+  lessons: BookLesson[]
+}
+
+/** Where an activity sits in a textbook. `order` is its place inside the lesson. */
+export interface Placement {
+  board_code: string
+  book_code: string
+  book_title: string
+  grade: string
+  lesson_position: number
+  lesson_title: string
+  order: number
+}
+
+export interface LessonRef {
+  book: string
+  lesson: number
+  order: number
+}

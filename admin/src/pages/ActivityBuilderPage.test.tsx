@@ -23,6 +23,8 @@ function serverFor(detail = builderDetail(), extra: Record<string, Handler> = {}
     'GET /v1/curriculum/levels': () => json(200, levelsFixture),
     'GET /v1/curriculum/skills': () => json(200, skillsFixture),
     'GET /v1/admin/activities/a1/assets': () => json(200, [assetFixture()]),
+    'GET /v1/admin/activities/a1/lessons': () => json(200, []),
+    'GET /v1/curriculum/boards': () => json(200, []),
     ...extra,
   }
 }

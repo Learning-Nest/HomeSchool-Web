@@ -998,3 +998,8 @@ textarea[aria-invalid='true'] { border-color: var(--danger); }
 input:disabled,
 textarea:disabled,
 select:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Textbook lessons panel */
+.placements { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.5rem; }
+.placements li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--surface-2); border-radius: 0.5rem; padding: 0.4rem 0.75rem; }
+.placement-form { margin-top: 0.5rem; }
