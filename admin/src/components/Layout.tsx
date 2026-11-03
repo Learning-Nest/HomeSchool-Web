@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { EnvBadge } from './EnvBadge'
 
@@ -61,6 +61,9 @@ export function Layout() {
               {user?.email}
               <span className="account-role">{roleLabel(user?.platform_role)}</span>
             </span>
+            <Link className="btn btn-small" to="/change-password">
+              Change password
+            </Link>
             <button type="button" className="btn btn-small" onClick={handleSignOut} disabled={signingOut}>
               Sign out
             </button>

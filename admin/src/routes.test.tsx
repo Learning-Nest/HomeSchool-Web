@@ -192,9 +192,101 @@ describe('educator accounts', () => {
     expect(client.mustChangePassword).toBe(false)
   })
 
-  it('does not show the password page to someone who has no temporary password', async () => {
+  it('lets a signed-in educator change their own password from the menu', async () => {
+    const { client, calls } = makeClient(
+      {
+        'GET /v1/admin/activities': () => json(200, []),
+        'POST /v1/auth/change-password': () => json(200, tokenOut(2, 'educator')),
+      },
+      educator(),
+    )
+    const { router } = renderApp(client, '/activities')
+    fireEvent.click(await screen.findByRole('link', { name: 'Change password' }))
+    expect(await screen.findByRole('heading', { name: 'Change your password' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/change-password')
+
+    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'my-old-password' } })
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'my-new-password-1' } })
+    fireEvent.change(screen.getByLabelText('New password again'), { target: { value: 'my-new-password-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+
+    expect(await screen.findByRole('heading', { name: 'Password changed' })).toBeTruthy()
+    expect(calls.find((c) => c.path === '/v1/auth/change-password')?.body).toEqual({
+      current_password: 'my-old-password',
+      new_password: 'my-new-password-1',
+    })
+    fireEvent.click(screen.getByRole('link', { name: 'Back to the console' }))
+    expect(await screen.findByRole('heading', { name: 'My activities' })).toBeTruthy()
+  })
+
+  it('refuses the same password and lets the person cancel', async () => {
     const { client } = makeClient({ 'GET /v1/admin/activities': () => json(200, []) }, educator())
+    renderApp(client, '/change-password')
+    fireEvent.change(await screen.findByLabelText('Current password'), { target: { value: 'same-password-12' } })
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'same-password-12' } })
+    expect(screen.getByText('Choose a password different from your current one.')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Save password' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('link', { name: 'Cancel' }))
+    expect(await screen.findByRole('heading', { name: 'My activities' })).toBeTruthy()
+  })
+
+  it('shows a wrong current password as an error and keeps the form', async () => {
+    const { client } = makeClient(
+      { 'POST /v1/auth/change-password': () => apiError(401, 'invalid_credentials') },
+      educator(),
+    )
+    renderApp(client, '/change-password')
+    fireEvent.change(await screen.findByLabelText('Current password'), { target: { value: 'not-my-password' } })
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'my-new-password-1' } })
+    fireEvent.change(screen.getByLabelText('New password again'), { target: { value: 'my-new-password-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Change your password' })).toBeTruthy()
+  })
+
+  it('sends a signed-out visitor from the change-password page to sign in', async () => {
+    const { client } = makeClient({}, { session: null })
     const { router } = renderApp(client, '/change-password')
-    await waitFor(() => expect(router.state.location.pathname).toBe('/activities'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
+  })
+})
+
+describe('forgot password', () => {
+  it('links from the sign-in page and asks the server for a temporary password', async () => {
+    const { client, calls } = makeClient(
+      { 'POST /v1/auth/forgot-password': () => json(202, { status: 'ok' }) },
+      { session: null },
+    )
+    const { router } = renderApp(client, '/login')
+    fireEvent.click(await screen.findByRole('link', { name: 'Forgot password?' }))
+    expect(await screen.findByRole('heading', { name: 'Forgot your password?' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/forgot-password')
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: '  eve@example.com ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a temporary password' }))
+
+    expect((await screen.findByRole('status')).textContent).toMatch(/If that email address belongs to an account/)
+    expect(calls.find((c) => c.path === '/v1/auth/forgot-password')?.body).toEqual({ email: 'eve@example.com' })
+    expect(calls.find((c) => c.path === '/v1/auth/forgot-password')?.headers.get('Authorization')).toBeNull()
+    fireEvent.click(screen.getByRole('link', { name: 'Back to sign in' }))
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy()
+  })
+
+  it('shows a server error such as rate limiting instead of the confirmation', async () => {
+    const { client } = makeClient(
+      { 'POST /v1/auth/forgot-password': () => apiError(429, 'rate_limited') },
+      { session: null },
+    )
+    renderApp(client, '/forgot-password')
+    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'eve@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a temporary password' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.queryByText(/If that email address/)).toBeNull()
+  })
+
+  it('sends someone who is already signed in back to the console', async () => {
+    const { client } = makeClient({ 'GET /v1/admin/stats': () => json(200, stats) })
+    const { router } = renderApp(client, '/forgot-password')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 })

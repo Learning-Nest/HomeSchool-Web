@@ -28,6 +28,8 @@ interface AuthValue {
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
   changePassword(currentPassword: string, newPassword: string): Promise<void>
+  /** Emails a temporary password; never says whether the address has an account. */
+  forgotPassword(email: string): Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -80,6 +82,8 @@ export function AuthProvider({ client, children }: { client: ApiClient; children
     [client],
   )
 
+  const forgotPassword = useCallback((email: string) => client.forgotPassword(email), [client])
+
   const signOut = useCallback(() => client.signOut(), [client])
 
   const role = user?.platform_role
@@ -94,8 +98,9 @@ export function AuthProvider({ client, children }: { client: ApiClient; children
       signIn,
       signOut,
       changePassword,
+      forgotPassword,
     }),
-    [user, api, role, mustChangePassword, notice, signIn, signOut, changePassword],
+    [user, api, role, mustChangePassword, notice, signIn, signOut, changePassword, forgotPassword],
   )
   return <AuthContext value={value}>{children}</AuthContext>
 }

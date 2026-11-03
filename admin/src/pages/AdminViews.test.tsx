@@ -97,6 +97,87 @@ describe('EducatorsPage', () => {
     expect(screen.getByRole('button', { name: /Resend invitation\s*Newt New/ })).toBeTruthy()
   })
 
+  it('offers “Reset password” only for active educators who have already signed in, and only to a super admin', async () => {
+    const rows = () =>
+      json(200, [
+        educatorSummary({ id: 'e1', full_name: 'Eve Educator', invite_pending: false }),
+        educatorSummary({ id: 'e2', full_name: 'Newt New', email: 'newt@example.com', invite_pending: true, last_active_at: null }),
+        educatorSummary({ id: 'e3', full_name: 'Dan Disabled', email: 'dan@example.com', active: false, invite_pending: false }),
+      ])
+    const boss = makeClient({ 'GET /v1/admin/educators': rows }, admin('super_admin'))
+    renderApp(boss.client, '/educators')
+    await screen.findByRole('link', { name: 'Eve Educator' })
+    expect(screen.getAllByRole('button', { name: /Reset password/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /Reset password\s*Eve Educator/ })).toBeTruthy()
+  })
+
+  it('does not show “Reset password” to a content admin', async () => {
+    const { client } = makeClient({ 'GET /v1/admin/educators': () => json(200, [educatorSummary()]) }, admin('content_admin'))
+    renderApp(client, '/educators')
+    await screen.findByRole('link', { name: 'Eve Educator' })
+    expect(screen.queryByRole('button', { name: /Reset password/ })).toBeNull()
+  })
+
+  it('asks first, then resets the password and says an email was sent without showing any password', async () => {
+    let posted = 0
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': () => json(200, [educatorSummary()]),
+        'POST /v1/admin/educators/e1/reset-password': () => {
+          posted += 1
+          return json(200, { educator: educatorSummary(), email_sent: true })
+        },
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Reset password\s*Eve Educator/ }))
+    expect(posted).toBe(0) // nothing is sent until the dialog is confirmed
+    fireEvent.click(await screen.findByRole('button', { name: 'Email a temporary password' }))
+    expect((await screen.findByRole('status')).textContent).toMatch(/temporary password was emailed to Eve Educator.*24 hours/)
+    expect(posted).toBe(1)
+    expect(document.body.textContent).not.toMatch(/temporary password:\s*\S+/i)
+  })
+
+  it('does nothing when the reset dialog is cancelled', async () => {
+    let posted = 0
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': () => json(200, [educatorSummary()]),
+        'POST /v1/admin/educators/e1/reset-password': () => {
+          posted += 1
+          return json(200, { educator: educatorSummary(), email_sent: true })
+        },
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Reset password\s*Eve Educator/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Email a temporary password' })).toBeNull())
+    expect(posted).toBe(0)
+  })
+
+  it('says plainly when the reset email could not be sent, and when the server refuses', async () => {
+    let answer: () => Response = () => json(200, { educator: educatorSummary(), email_sent: false })
+    const { client } = makeClient(
+      {
+        'GET /v1/admin/educators': () => json(200, [educatorSummary()]),
+        'POST /v1/admin/educators/e1/reset-password': () => answer(),
+      },
+      admin('super_admin'),
+    )
+    renderApp(client, '/educators')
+    fireEvent.click(await screen.findByRole('button', { name: /Reset password\s*Eve Educator/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Email a temporary password' }))
+    expect((await screen.findByRole('status')).textContent).toMatch(/could not be sent, so nothing has reached them/)
+
+    answer = () => apiError(429, 'rate_limited')
+    fireEvent.click(await screen.findByRole('button', { name: /Reset password\s*Eve Educator/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Email a temporary password' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+  })
+
   it('does not show “Resend invitation” to anyone but a super admin', async () => {
     const rows = () => json(200, [educatorSummary({ invite_pending: true, last_active_at: null })])
     const { client } = makeClient({ 'GET /v1/admin/educators': rows }, admin('content_admin'))

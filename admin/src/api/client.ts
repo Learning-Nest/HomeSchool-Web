@@ -71,6 +71,11 @@ export class ApiClient {
     return this.send<TokenOut>('POST', '/auth/login', { body: { email, password }, auth: false }, null)
   }
 
+  /** Asks for a temporary password by email. The server answers the same way whether or not the address has an account. */
+  async forgotPassword(email: string): Promise<void> {
+    await this.send<unknown>('POST', '/auth/forgot-password', { body: { email }, auth: false }, null)
+  }
+
   startSession(out: TokenOut): void {
     this.setSession(out)
   }

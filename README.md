@@ -17,13 +17,13 @@ separate Azure Static Web Apps.
 
 ## Who uses the admin console
 
-Everyone signs in at the same address; what they see depends on their platform role.
+Everyone signs in at the same address; what they see depends on their platform role. Everyone can use “Forgot password?” on the sign-in page (a temporary password is emailed) and “Change password” in the header.
 
 | Role | Sees | Can do |
 | --- | --- | --- |
 | `educator` | My activities, New activity, My assignments | Build activities in the guided builder (number of exercises, kind of each exercise, skills per exercise, pictures on exercises, choices and match/order items), check them, and send them for review. Only their own drafts and the drafts an admin assigned to them (My assignments shows the brief, due date and any reviewer note); once sent they are read-only until a reviewer answers. |
 | `content_admin` | Everything above for all activities, plus Dashboard, Review queue, Assignments, Educators, Activity log, Import | Publish, send back with a note (required), archive, edit anyone's activity in the JSON editor, assign a draft to an educator with a written brief and a due date (from the draft's Assignment panel), track, reassign or cancel assignments, see what each educator did and export the log as CSV. |
-| `super_admin` | Everything `content_admin` sees | Also invite educators (a temporary password is emailed; it must be replaced at first sign-in), resend the invitation to anyone who has not signed in yet (a fresh 7-day temporary password replaces the old one), and disable or enable their accounts. |
+| `super_admin` | Everything `content_admin` sees | Also invite educators (a temporary password is emailed; it must be replaced at first sign-in), resend the invitation to anyone who has not signed in yet (a fresh 7-day temporary password replaces the old one), reset the password of an educator who has already signed in (a 24-hour temporary password is emailed; the current one keeps working until it is used), and disable or enable their accounts. |
 
 The builder saves drafts by itself (a few seconds after the last change) without requiring them to be complete. "Check this
 activity" runs the same validation the server runs on submit and records the result; any later change means checking again,

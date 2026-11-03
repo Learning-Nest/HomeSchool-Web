@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/errors'
 import { NotStaffError, useAuth } from '../auth/AuthContext'
 import { ErrorPanel } from '../components/ErrorPanel'
@@ -89,6 +89,9 @@ export function LoginPage() {
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <p className="login-links">
+          <Link to="/forgot-password">Forgot password?</Link>
+        </p>
       </form>
     </main>
   )

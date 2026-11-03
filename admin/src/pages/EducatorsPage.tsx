@@ -28,6 +28,14 @@ export function resendMessage(result: EducatorInvited): string {
     : `The invitation to ${who} could not be sent, so nothing has reached them. The server’s email settings need attention; then try “Resend invitation” again.`
 }
 
+/** What happened when a password reset was started for someone who had already signed in. */
+export function resetMessage(result: EducatorInvited): string {
+  const who = `${result.educator.full_name} (${result.educator.email})`
+  return result.email_sent
+    ? `A temporary password was emailed to ${who}. It works for 24 hours; their current password keeps working until they use it.`
+    : `The reset email to ${who} could not be sent, so nothing has reached them. The server’s email settings need attention; then try “Reset password” again.`
+}
+
 export function EducatorsPage() {
   useDocumentTitle('Educators')
   const { api, isSuperAdmin } = useAuth()
@@ -41,6 +49,9 @@ export function EducatorsPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [resending, setResending] = useState<string | null>(null)
   const [resendError, setResendError] = useState<Error | null>(null)
+  const [reset, setReset] = useState<EducatorSummary | null>(null)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<Error | null>(null)
   const [toggle, setToggle] = useState<EducatorSummary | null>(null)
   const [toggling, setToggling] = useState(false)
   const [toggleError, setToggleError] = useState<Error | null>(null)
@@ -73,6 +84,22 @@ export function EducatorsPage() {
       setResendError(e instanceof Error ? e : new Error(String(e)))
     } finally {
       setResending(null)
+      reload()
+    }
+  }
+
+  async function confirmReset() {
+    if (!reset) return
+    setResetting(true)
+    setResetError(null)
+    setNotice(null)
+    try {
+      setNotice(resetMessage(await api.resetEducatorPassword(reset.id)))
+    } catch (e) {
+      setResetError(e instanceof Error ? e : new Error(String(e)))
+    } finally {
+      setResetting(false)
+      setReset(null)
       reload()
     }
   }
@@ -126,6 +153,7 @@ export function EducatorsPage() {
         </p>
       )}
       {resendError && <ErrorPanel error={resendError} />}
+      {resetError && <ErrorPanel error={resetError} />}
       {toggleError && <ErrorPanel error={toggleError} />}
       {error && <ErrorPanel error={error} onRetry={reload} />}
       {!error && !data && <Loading label="Loading educators…" />}
@@ -190,6 +218,15 @@ export function EducatorsPage() {
                           </button>
                         </>
                       )}
+                      {u.active && !u.invite_pending && (
+                        <>
+                          {' '}
+                          <button type="button" className="btn btn-small" onClick={() => setReset(u)}>
+                            Reset password
+                            <span className="visually-hidden"> {u.full_name}</span>
+                          </button>
+                        </>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -197,6 +234,22 @@ export function EducatorsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {reset && (
+        <ConfirmDialog
+          title={`Reset the password of ${reset.full_name}?`}
+          confirmLabel="Email a temporary password"
+          busy={resetting}
+          onConfirm={() => void confirmReset()}
+          onCancel={() => setReset(null)}
+        >
+          <p>
+            A temporary password is emailed to {reset.email}. It works for 24 hours; when they sign in with it they
+            choose a new password and every other session ends. Their current password keeps working until then, and
+            signing in with it cancels the reset.
+          </p>
+        </ConfirmDialog>
       )}
 
       {toggle && (

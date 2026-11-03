@@ -12,6 +12,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EducatorDetailPage } from './pages/EducatorDetailPage'
 import { EducatorsPage } from './pages/EducatorsPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ImportPage } from './pages/ImportPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewActivityPage } from './pages/NewActivityPage'
@@ -32,6 +33,7 @@ function ActivityRoute() {
 
 export const appRoutes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/change-password', element: <ChangePasswordPage /> },
   {
     element: <RequireStaff />,

@@ -119,6 +119,8 @@ export function createAdminApi(client: ApiClient) {
     createEducator: (email: string, fullName: string) =>
       client.post<EducatorCreated>('/admin/educators', { email, full_name: fullName }),
     resendInvitation: (id: string) => client.post<EducatorInvited>(`/admin/educators/${seg(id)}/invite`, {}),
+    resetEducatorPassword: (id: string) =>
+      client.post<EducatorInvited>(`/admin/educators/${seg(id)}/reset-password`, {}),
     setEducatorActive: (id: string, active: boolean) =>
       client.patch<EducatorSummary>(`/admin/educators/${seg(id)}`, { active }),
 
