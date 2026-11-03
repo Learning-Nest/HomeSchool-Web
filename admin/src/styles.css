@@ -472,6 +472,39 @@ details summary {
   background: var(--danger-bg);
 }
 
+.badge-open {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.badge-submitted {
+  color: var(--accent, var(--warn));
+}
+
+.badge-completed {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.badge-cancelled {
+  color: var(--muted);
+}
+
+.badge-overdue {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.brief {
+  white-space: pre-wrap;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.brief-cell {
+  max-width: 28rem;
+  white-space: pre-wrap;
+}
+
 /* Dashboard */
 .stat-grid {
   display: grid;
@@ -1005,3 +1038,11 @@ select:disabled { opacity: 0.7; cursor: not-allowed; }
 .placement-form { margin-top: 0.5rem; }
 .lesson-fieldset { border: 1px solid var(--border, currentColor); border-radius: 0.5rem; padding: 0.75rem 1rem; margin: 1rem 0; }
 .lesson-fieldset legend { padding: 0 0.4rem; font-weight: 600; }
+
+.card-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+}

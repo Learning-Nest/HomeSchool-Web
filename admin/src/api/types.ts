@@ -54,6 +54,11 @@ export interface AdminActivitySummary {
   review_note?: string | null
   last_validated_at?: string | null
   is_validated?: boolean
+  // The live assignment (open or submitted), when an admin handed this draft to an educator.
+  assignment_id?: string | null
+  assigned_to?: string | null
+  assigned_to_name?: string | null
+  assignment_due?: string | null
 }
 
 export interface AdminActivityDetail extends AdminActivitySummary {
@@ -226,4 +231,48 @@ export interface LessonRef {
   book: string
   lesson: number
   order: number
+}
+
+export type AssignmentStatus = 'open' | 'submitted' | 'completed' | 'cancelled'
+
+/** An admin's request that an educator finishes a draft (backend-api content.activity_assignments). */
+export interface Assignment {
+  id: string
+  activity_id: string
+  activity_slug: string
+  activity_title: string
+  activity_status: string
+  educator_id: string
+  educator_name: string | null
+  assigned_by: string | null
+  assigned_by_name: string | null
+  requirements: string
+  /** A calendar day (YYYY-MM-DD) or null. */
+  due_date: string | null
+  status: AssignmentStatus
+  /** Still with the educator and past the due date. */
+  overdue: boolean
+  /** The reviewer's note when the activity was sent back. */
+  review_note: string | null
+  created_at: string
+  updated_at: string
+  submitted_at: string | null
+  completed_at: string | null
+  cancelled_at: string | null
+}
+
+export interface AssignmentCreated {
+  assignment: Assignment
+  email_sent: boolean
+}
+
+export interface AssignmentQuery {
+  status?: AssignmentStatus
+  /** true = only open and submitted */
+  live?: boolean
+  educator_id?: string
+  overdue?: boolean
+  activity_id?: string
+  limit?: number
+  offset?: number
 }

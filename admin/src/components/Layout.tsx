@@ -50,6 +50,7 @@ export function Layout() {
               {isAdmin ? 'Activities' : 'My activities'}
             </NavLink>
             <NavLink to="/activities/new">New activity</NavLink>
+            <NavLink to="/assignments">{isAdmin ? 'Assignments' : 'My assignments'}</NavLink>
             {isAdmin && <NavLink to="/review">Review</NavLink>}
             {isAdmin && <NavLink to="/educators">Educators</NavLink>}
             {isAdmin && <NavLink to="/activity-log">Activity log</NavLink>}

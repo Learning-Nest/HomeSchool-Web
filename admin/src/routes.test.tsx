@@ -144,7 +144,7 @@ describe('educator accounts', () => {
     expect(await screen.findByRole('heading', { name: 'My activities' })).toBeTruthy()
     expect(router.state.location.pathname).toBe('/activities')
     const nav = screen.getByRole('navigation', { name: 'Main' })
-    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['My activities', 'New activity'])
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['My activities', 'New activity', 'My assignments'])
     expect(calls.some((c) => c.path === '/v1/admin/stats')).toBe(false)
   })
 

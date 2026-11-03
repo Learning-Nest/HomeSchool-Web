@@ -7,6 +7,7 @@ import { ActivitiesPage } from './pages/ActivitiesPage'
 import { ActivityBuilderPage } from './pages/ActivityBuilderPage'
 import { ActivityEditorPage } from './pages/ActivityEditorPage'
 import { ActivityLogPage } from './pages/ActivityLogPage'
+import { AssignmentsPage } from './pages/AssignmentsPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EducatorDetailPage } from './pages/EducatorDetailPage'
@@ -43,6 +44,7 @@ export const appRoutes: RouteObject[] = [
           { path: 'activities/new', element: <NewActivityPage /> },
           { path: 'activities/:id', element: <ActivityRoute /> },
           { path: 'activities/:id/build', element: <ActivityBuilderPage /> },
+          { path: 'assignments', element: <AssignmentsPage /> },
           {
             element: <RequireAdmin />,
             children: [

@@ -201,3 +201,26 @@ export const eventFixture = (overrides: Record<string, unknown> = {}) => ({
   detail: {},
   ...overrides,
 })
+
+export const assignmentFixture = (overrides: Record<string, unknown> = {}) => ({
+  id: 'as1',
+  activity_id: 'a1',
+  activity_slug: 'count-to-ten',
+  activity_title: 'Count to ten',
+  activity_status: 'draft',
+  educator_id: 'e1',
+  educator_name: 'Eve Educator',
+  assigned_by: 'u1',
+  assigned_by_name: 'Ed Itor',
+  requirements: 'Write six exercises on counting to 20.',
+  due_date: '2099-12-31',
+  status: 'open',
+  overdue: false,
+  review_note: null,
+  created_at: '2026-10-01T10:00:00Z',
+  updated_at: '2026-10-01T10:00:00Z',
+  submitted_at: null,
+  completed_at: null,
+  cancelled_at: null,
+  ...overrides,
+})

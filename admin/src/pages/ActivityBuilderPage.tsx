@@ -8,6 +8,7 @@ import { StepCard } from '../components/builder/StepCard'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { Loading } from '../components/Loading'
+import { AssignmentBrief } from '../components/AssignmentBrief'
 import { StatusBadge } from '../components/StatusBadge'
 import { StepPreview } from '../components/StepPreview'
 import {
@@ -259,6 +260,7 @@ function Builder({ initial, skills, subjects, levels, initialAssets }: BuilderPr
           </Link>
         )}
       </header>
+      {detail.assignment_id && <AssignmentBrief assignmentId={detail.assignment_id} />}
 
       <AuthorshipLine detail={detail} />
 

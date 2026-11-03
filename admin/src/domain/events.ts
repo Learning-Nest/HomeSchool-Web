@@ -12,6 +12,10 @@ export const EVENT_ACTIONS: readonly { value: string; label: string }[] = [
   { value: 'published', label: 'Published' },
   { value: 'archived', label: 'Archived' },
   { value: 'reopened', label: 'Reopened as draft' },
+  { value: 'assigned', label: 'Assigned to an educator' },
+  { value: 'assignment_updated', label: 'Assignment edited' },
+  { value: 'assignment_cancelled', label: 'Assignment cancelled' },
+  { value: 'assignment_completed', label: 'Assignment completed' },
 ]
 
 export function actionLabel(action: string): string {
@@ -46,6 +50,10 @@ export function describeEvent(event: ActivityEvent): string {
       return 'Waiting for a reviewer'
     case 'published':
       return event.version ? `Live as version ${event.version}` : 'Live in the app'
+    case 'assigned':
+      return typeof d.educator_name === 'string' ? `Assigned to ${d.educator_name}` : 'Assigned to an educator'
+    case 'assignment_cancelled':
+      return d.reason === 'reassigned' ? 'Moved to someone else' : d.reason === 'archived' ? 'The activity was archived' : 'Withdrawn'
     default:
       return typeof d.note === 'string' ? d.note : ''
   }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useBlocker, useParams } from 'react-router-dom'
 import type { ActivityStatus, AdminActivityDetail } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { AssignmentPanel } from '../components/AssignmentPanel'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { JsonEditor } from '../components/JsonEditor'
@@ -186,6 +187,12 @@ function ActivityEditor({ initial }: { initial: AdminActivityDetail }) {
         </div>
       </dl>
       <AuthorshipPanel detail={detail} />
+      <AssignmentPanel
+        activityId={detail.id}
+        activityTitle={detail.title}
+        activityStatus={detail.status}
+        onChanged={() => setHistoryKey((k) => k + 1)}
+      />
 
       <section className="panel" aria-labelledby="status-heading">
         <h2 id="status-heading">Status: {statusLabel(detail.status)}</h2>

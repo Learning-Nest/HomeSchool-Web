@@ -6,6 +6,9 @@ import type {
   AdminActivitySummary,
   AdminStats,
   AssetInfo,
+  Assignment,
+  AssignmentCreated,
+  AssignmentQuery,
   Board,
   BookDetail,
   BookSummary,
@@ -118,6 +121,18 @@ export function createAdminApi(client: ApiClient) {
     resendInvitation: (id: string) => client.post<EducatorInvited>(`/admin/educators/${seg(id)}/invite`, {}),
     setEducatorActive: (id: string, active: boolean) =>
       client.patch<EducatorSummary>(`/admin/educators/${seg(id)}`, { active }),
+
+    /** Hands a draft to an educator. A draft someone else holds is moved to the new person. */
+    assignActivity: (activityId: string, body: { educator_id: string; requirements: string; due_date: string | null }) =>
+      client.post<AssignmentCreated>(`/admin/activities/${seg(activityId)}/assignments`, body),
+    /** Admins: everyone's assignments. Educators: only their own. */
+    listAssignments: (query: AssignmentQuery = {}, signal?: AbortSignal) =>
+      client.get<Assignment[]>('/admin/assignments', { query: { ...query }, signal }),
+    getAssignment: (id: string, signal?: AbortSignal) => client.get<Assignment>(`/admin/assignments/${seg(id)}`, { signal }),
+    /** Only the fields that are present change; due_date null removes the date. */
+    updateAssignment: (id: string, body: { requirements?: string; due_date?: string | null }) =>
+      client.patch<Assignment>(`/admin/assignments/${seg(id)}`, body),
+    cancelAssignment: (id: string) => client.post<Assignment>(`/admin/assignments/${seg(id)}/cancel`, {}),
 
     activityLog: (query: LogQuery, signal?: AbortSignal) =>
       client.get<ActivityEvent[]>('/admin/activity-log', { query: { ...query }, signal }),

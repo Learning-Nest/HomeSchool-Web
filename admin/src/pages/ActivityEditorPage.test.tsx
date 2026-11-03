@@ -76,6 +76,7 @@ describe('activity editor', () => {
   it('lists the server validation problems and keeps the edit', async () => {
     const { client } = makeClient({
       'GET /v1/admin/activities/a1': detailHandler(),
+      'GET /v1/admin/assignments': () => json(200, []),
       'PUT /v1/admin/activities/a1/definition': () =>
         apiError(422, 'content_invalid', { problems: ['s2: scored single_choice needs correct', 'unknown skill MAT.X.Y'] }),
     })
