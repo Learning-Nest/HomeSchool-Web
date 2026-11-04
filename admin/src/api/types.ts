@@ -276,3 +276,80 @@ export interface AssignmentQuery {
   limit?: number
   offset?: number
 }
+
+/** Settings of the daily release for one scope (backend-api content.release_policies). Fractions are 0..1. */
+export interface ReleasePolicyValues {
+  release_threshold: number
+  set_minutes: number
+  set_max_activities: number
+  max_open_items: number
+  /** ISO weekdays: 1 = Monday .. 7 = Sunday. */
+  school_days: number[]
+  strong_score: number
+  revision_open_cap: number
+  revision_cooldown_days: number
+  child_daily_practice_limit: number
+}
+
+export interface ReleasePolicy extends ReleasePolicyValues {
+  /** '' = every board. */
+  scope_board: string
+  /** '' = every grade of the board. */
+  scope_grade: string
+  updated_at: string | null
+}
+
+export interface PolicyScope {
+  board: string
+  grade: string
+}
+
+export interface CoverageLesson {
+  position: number
+  title: string
+  published_activities: number
+  minutes: number
+}
+
+export interface CoverageBook {
+  code: string
+  board_code: string
+  grade: string
+  subject_code: string
+  title: string
+  lessons: number
+  lessons_with_activities: number
+  lessons_below_target: number
+  published_activities: number
+  minutes: number
+  days_of_content: number
+  weak_lessons: CoverageLesson[]
+}
+
+export interface Coverage {
+  target_per_lesson: number
+  books: CoverageBook[]
+}
+
+export interface ReleasePreviewActivity {
+  slug: string
+  title: string
+  book_code: string
+  lesson_position: number
+  order: number
+  duration_min: number
+}
+
+export interface ReleasePreviewDay {
+  day: number
+  activities: ReleasePreviewActivity[]
+  minutes: number
+}
+
+export interface ReleasePreview {
+  board_code: string
+  grade: string
+  books: string[]
+  days: ReleasePreviewDay[]
+  remaining_activities: number
+}

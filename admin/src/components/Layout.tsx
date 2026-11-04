@@ -55,6 +55,8 @@ export function Layout() {
             {isAdmin && <NavLink to="/educators">Educators</NavLink>}
             {isAdmin && <NavLink to="/activity-log">Activity log</NavLink>}
             {isAdmin && <NavLink to="/import">Import</NavLink>}
+            {isAdmin && <NavLink to="/coverage">Coverage</NavLink>}
+            {isAdmin && <NavLink to="/release">Release settings</NavLink>}
           </nav>
           <div className="account">
             <span className="account-email" title={user?.email}>

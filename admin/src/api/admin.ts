@@ -14,6 +14,7 @@ import type {
   BookSummary,
   Bundle,
   BundleReport,
+  Coverage,
   EducatorActivity,
   EducatorCreated,
   EducatorInvited,
@@ -21,6 +22,10 @@ import type {
   Level,
   LessonRef,
   Placement,
+  PolicyScope,
+  ReleasePolicy,
+  ReleasePolicyValues,
+  ReleasePreview,
   Skill,
   StaffMe,
   Subject,
@@ -135,6 +140,16 @@ export function createAdminApi(client: ApiClient) {
     updateAssignment: (id: string, body: { requirements?: string; due_date?: string | null }) =>
       client.patch<Assignment>(`/admin/assignments/${seg(id)}`, body),
     cancelAssignment: (id: string) => client.post<Assignment>(`/admin/assignments/${seg(id)}/cancel`, {}),
+
+    releasePolicies: (signal?: AbortSignal) => client.get<ReleasePolicy[]>('/admin/release-policies', { signal }),
+    saveReleasePolicy: (scope: PolicyScope, values: ReleasePolicyValues) =>
+      client.put<ReleasePolicy>('/admin/release-policies', values, { query: { board: scope.board, grade: scope.grade } }),
+    deleteReleasePolicy: (scope: PolicyScope) =>
+      client.delete('/admin/release-policies', { query: { board: scope.board, grade: scope.grade } }),
+    coverage: (query: { board?: string; grade?: string; target_per_lesson?: number } = {}, signal?: AbortSignal) =>
+      client.get<Coverage>('/admin/coverage', { query: { ...query }, signal }),
+    releasePreview: (body: { board_code: string; grade: string; days: number }) =>
+      client.post<ReleasePreview>('/admin/release-preview', body),
 
     activityLog: (query: LogQuery, signal?: AbortSignal) =>
       client.get<ActivityEvent[]>('/admin/activity-log', { query: { ...query }, signal }),

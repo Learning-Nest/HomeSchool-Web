@@ -9,6 +9,7 @@ import { ActivityEditorPage } from './pages/ActivityEditorPage'
 import { ActivityLogPage } from './pages/ActivityLogPage'
 import { AssignmentsPage } from './pages/AssignmentsPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
+import { CoveragePage } from './pages/CoveragePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EducatorDetailPage } from './pages/EducatorDetailPage'
 import { EducatorsPage } from './pages/EducatorsPage'
@@ -17,6 +18,7 @@ import { ImportPage } from './pages/ImportPage'
 import { LoginPage } from './pages/LoginPage'
 import { NewActivityPage } from './pages/NewActivityPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { ReleaseSettingsPage } from './pages/ReleaseSettingsPage'
 import { ReviewPage } from './pages/ReviewPage'
 
 /** Admins land on the dashboard; educators have no dashboard, so their home is their own list. */
@@ -55,6 +57,8 @@ export const appRoutes: RouteObject[] = [
               { path: 'educators/:id', element: <EducatorDetailPage /> },
               { path: 'activity-log', element: <ActivityLogPage /> },
               { path: 'import', element: <ImportPage /> },
+              { path: 'coverage', element: <CoveragePage /> },
+              { path: 'release', element: <ReleaseSettingsPage /> },
             ],
           },
           { path: '*', element: <NotFoundPage /> },

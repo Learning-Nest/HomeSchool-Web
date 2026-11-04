@@ -1068,3 +1068,4 @@ select:disabled { opacity: 0.7; cursor: not-allowed; }
   text-align: center;
   font-size: 0.9rem;
 }
+.check-inline { display: inline-flex; align-items: center; gap: 0.3rem; margin-right: 1rem; }
