@@ -8,6 +8,7 @@ import type {
   AssetInfo,
   Assignment,
   AssignmentCreated,
+  BulkAssignmentResult,
   AssignmentQuery,
   Board,
   BookDetail,
@@ -38,6 +39,8 @@ export interface ActivityQuery {
   /** Only for admins: show one educator's activities. */
   author?: string
   q?: string
+  /** Activities whose level range includes this level code. */
+  level?: string
   limit: number
   offset: number
 }
@@ -132,6 +135,9 @@ export function createAdminApi(client: ApiClient) {
     /** Hands a draft to an educator. A draft someone else holds is moved to the new person. */
     assignActivity: (activityId: string, body: { educator_id: string; requirements: string; due_date: string | null }) =>
       client.post<AssignmentCreated>(`/admin/activities/${seg(activityId)}/assignments`, body),
+    /** Hands many drafts to one educator with one brief and due date; the educator gets a single email with the count. */
+    bulkAssign: (body: { activity_ids: string[]; educator_id: string; requirements: string; due_date: string | null }) =>
+      client.post<BulkAssignmentResult>('/admin/assignments/bulk', body),
     /** Admins: everyone's assignments. Educators: only their own. */
     listAssignments: (query: AssignmentQuery = {}, signal?: AbortSignal) =>
       client.get<Assignment[]>('/admin/assignments', { query: { ...query }, signal }),

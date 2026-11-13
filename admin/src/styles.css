@@ -1069,3 +1069,31 @@ select:disabled { opacity: 0.7; cursor: not-allowed; }
   font-size: 0.9rem;
 }
 .check-inline { display: inline-flex; align-items: center; gap: 0.3rem; margin-right: 1rem; }
+
+/* Activities list: bulk selection and page size */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.75rem;
+}
+
+.bulk-bar > span {
+  flex: 1 1 auto;
+}
+
+.select-col {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+tr[aria-selected='true'] > * {
+  background: var(--selected-row, rgba(37, 99, 235, 0.08));
+}

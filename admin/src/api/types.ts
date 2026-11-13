@@ -266,6 +266,20 @@ export interface AssignmentCreated {
   email_sent: boolean
 }
 
+export interface BulkAssignmentSkipped {
+  activity_id: string
+  title?: string | null
+  /** not_found | not_draft | already_assigned */
+  reason: string
+}
+
+export interface BulkAssignmentResult {
+  /** How many drafts were handed over; this is the number in the single email. */
+  assigned: number
+  skipped: BulkAssignmentSkipped[]
+  email_sent: boolean
+}
+
 export interface AssignmentQuery {
   status?: AssignmentStatus
   /** true = only open and submitted */

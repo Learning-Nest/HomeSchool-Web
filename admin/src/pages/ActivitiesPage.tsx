@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { AdminActivitySummary } from '../api/types'
+import type { AdminActivitySummary, BulkAssignmentResult } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { BulkAssignDialog } from '../components/BulkAssignDialog'
 import { ErrorPanel } from '../components/ErrorPanel'
 import { Loading } from '../components/Loading'
 import { StatusBadge } from '../components/StatusBadge'
@@ -10,7 +11,28 @@ import { STATUSES, statusLabel } from '../domain/status'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useRequest } from '../hooks/useRequest'
 
-const PAGE_SIZE = 25
+/** How many rows one page can show. The first is the default. */
+export const PAGE_SIZES = [50, 100, 200, 500, 1000] as const
+
+const SKIP_REASONS: Record<string, string> = {
+  not_found: 'no longer exists',
+  not_draft: 'is no longer a draft',
+  already_assigned: 'was already with this educator',
+}
+
+function describeResult(result: BulkAssignmentResult, educator: string): string {
+  const n = result.assigned
+  const parts: string[] = []
+  if (n === 0) parts.push(`Nothing was assigned to ${educator}.`)
+  else {
+    parts.push(`${n} ${n === 1 ? 'activity' : 'activities'} assigned to ${educator}.`)
+    parts.push(result.email_sent ? 'They were sent one email.' : 'The email could not be sent; let them know yourself.')
+  }
+  if (result.skipped.length > 0) {
+    parts.push(`${result.skipped.length} skipped: ${[...new Set(result.skipped.map((x) => SKIP_REASONS[x.reason] ?? x.reason))].join(', ')}.`)
+  }
+  return parts.join(' ')
+}
 
 /** Small tags next to the status that tell an author what to do next. */
 function Flags({ a }: { a: AdminActivitySummary }) {
@@ -28,26 +50,53 @@ export function ActivitiesPage() {
   const subject = params.get('subject') ?? ''
   const author = isAdmin ? (params.get('author') ?? '') : ''
   const q = params.get('q') ?? ''
+  const level = params.get('level') ?? ''
+  const requestedSize = Number.parseInt(params.get('size') ?? '', 10)
+  const pageSize = PAGE_SIZES.find((n) => n === requestedSize) ?? PAGE_SIZES[0]
   const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1)
 
   // The API returns a bare list without a total, so ask for one extra row to learn whether a next page exists.
   const loadRows = useCallback(
     (signal: AbortSignal) =>
-      api.listActivities({ status, subject, author, q, limit: PAGE_SIZE + 1, offset: (page - 1) * PAGE_SIZE }, signal),
-    [api, status, subject, author, q, page],
+      api.listActivities({ status, subject, author, q, level, limit: pageSize + 1, offset: (page - 1) * pageSize }, signal),
+    [api, status, subject, author, q, level, page, pageSize],
   )
   const { data, error, loading, reload } = useRequest(loadRows)
   const loadSubjects = useCallback((signal: AbortSignal) => api.subjects(signal), [api])
   const { data: subjects } = useRequest(loadSubjects)
+  const loadLevels = useCallback((signal: AbortSignal) => api.levels(signal), [api])
+  const { data: levels } = useRequest(loadLevels)
   const loadEducators = useCallback(
     (signal: AbortSignal) => (isAdmin ? api.listEducators(signal) : Promise.resolve([])),
     [api, isAdmin],
   )
   const { data: educators } = useRequest(loadEducators)
 
-  const rows = useMemo(() => (data ? data.slice(0, PAGE_SIZE) : []), [data])
-  const hasNext = (data?.length ?? 0) > PAGE_SIZE
-  const filtered = status !== '' || subject !== '' || q !== '' || author !== ''
+  const rows = useMemo(() => (data ? data.slice(0, pageSize) : []), [data, pageSize])
+  const hasNext = (data?.length ?? 0) > pageSize
+  // Page size is a display choice, not a filter, so it does not count here and "Clear filters" keeps it.
+  const filtered = status !== '' || subject !== '' || q !== '' || author !== '' || level !== ''
+
+  // Only drafts can be handed to an educator. The picked ids belong to the view they were picked in: changing a filter,
+  // the page or the page size starts a fresh selection instead of silently assigning rows that are no longer shown.
+  const viewKey = `${status}|${subject}|${author}|${q}|${level}|${page}|${pageSize}`
+  const [picked, setPicked] = useState<{ key: string; ids: ReadonlySet<string> }>({ key: '', ids: new Set() })
+  const [assigning, setAssigning] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const selected = picked.key === viewKey ? picked.ids : new Set<string>()
+  const draftIds = useMemo(() => rows.filter((r) => r.status === 'draft').map((r) => r.id), [rows])
+  const allPicked = draftIds.length > 0 && draftIds.every((id) => selected.has(id))
+  const somePicked = selected.size > 0 && !allPicked
+
+  function toggle(id: string) {
+    const ids = new Set(selected)
+    if (ids.has(id)) ids.delete(id)
+    else ids.add(id)
+    setPicked({ key: viewKey, ids })
+  }
+  function toggleAll() {
+    setPicked({ key: viewKey, ids: allPicked ? new Set() : new Set(draftIds) })
+  }
 
   function update(changes: Record<string, string>) {
     const next = new URLSearchParams(params)
@@ -88,6 +137,19 @@ export function ActivitiesPage() {
           </select>
         </label>
         <label className="field">
+          <span className="field-label">Level</span>
+          <select value={level} onChange={(e) => update({ level: e.target.value })}>
+            <option value="">All levels</option>
+            {level && !levels?.some((l) => l.code === level) && <option value={level}>{level}</option>}
+            {levels?.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.code}
+                {l.name && l.name !== l.code ? ` · ${l.name}` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
           <span className="field-label">Subject</span>
           <select value={subject} onChange={(e) => update({ subject: e.target.value })}>
             <option value="">All subjects</option>
@@ -121,12 +183,21 @@ export function ActivitiesPage() {
           Search
         </button>
         {filtered && (
-          <button type="button" className="btn" onClick={() => setParams(new URLSearchParams())}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setParams(pageSize === PAGE_SIZES[0] ? new URLSearchParams() : new URLSearchParams({ size: String(pageSize) }))}
+          >
             Clear filters
           </button>
         )}
       </form>
 
+      {notice && (
+        <p className="panel panel-success" role="status">
+          {notice}
+        </p>
+      )}
       {error && <ErrorPanel error={error} onRetry={reload} />}
       {!error && !data && <Loading label="Loading activities…" />}
       {!error && data && (
@@ -140,10 +211,44 @@ export function ActivitiesPage() {
                   : 'You have not started any activities yet. Choose “New activity” to begin.'}
             </p>
           ) : (
+            <>
+              {isAdmin && (
+                <div className="bulk-bar" role="group" aria-label="Bulk actions">
+                  <span role="status">
+                    {selected.size === 0
+                      ? draftIds.length === 0
+                        ? 'No drafts on this page to assign.'
+                        : 'Tick drafts to assign them to an educator together.'
+                      : `${selected.size} ${selected.size === 1 ? 'draft' : 'drafts'} selected`}
+                  </span>
+                  <button type="button" className="btn btn-primary" disabled={selected.size === 0} onClick={() => setAssigning(true)}>
+                    Assign to an educator…
+                  </button>
+                  {selected.size > 0 && (
+                    <button type="button" className="btn" onClick={() => setPicked({ key: viewKey, ids: new Set() })}>
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+              )}
             <div className="table-wrap" role="region" aria-label="Activities table" tabIndex={0}>
               <table>
                 <thead>
                   <tr>
+                    {isAdmin && (
+                      <th scope="col" className="select-col">
+                        <input
+                          type="checkbox"
+                          aria-label="Select all drafts on this page"
+                          checked={allPicked}
+                          ref={(el) => {
+                            if (el) el.indeterminate = somePicked
+                          }}
+                          disabled={draftIds.length === 0}
+                          onChange={toggleAll}
+                        />
+                      </th>
+                    )}
                     <th scope="col">Title</th>
                     <th scope="col">Subject</th>
                     <th scope="col">Levels</th>
@@ -162,7 +267,18 @@ export function ActivitiesPage() {
                   {rows.map((a) => {
                     const editedAt = a.last_edited_at ?? a.updated_at
                     return (
-                      <tr key={a.id}>
+                      <tr key={a.id} aria-selected={isAdmin && a.status === 'draft' ? selected.has(a.id) : undefined}>
+                        {isAdmin && (
+                          <td className="select-col">
+                            <input
+                              type="checkbox"
+                              aria-label={a.status === 'draft' ? `Select ${a.title}` : `${a.title} is not a draft, so it cannot be assigned`}
+                              checked={selected.has(a.id)}
+                              disabled={a.status !== 'draft'}
+                              onChange={() => toggle(a.id)}
+                            />
+                          </td>
+                        )}
                         <th scope="row">
                           <Link to={`/activities/${a.id}`}>{a.title}</Link>
                           <span className="slug">{a.slug}</span>
@@ -189,6 +305,7 @@ export function ActivitiesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
           <nav className="pager" aria-label="Pages">
             <button
@@ -201,13 +318,35 @@ export function ActivitiesPage() {
             </button>
             <span>
               Page {page}
-              {rows.length > 0 && ` · rows ${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + rows.length}`}
+              {rows.length > 0 && ` · rows ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + rows.length}`}
             </span>
+            <label className="page-size">
+              <span>Rows per page</span>
+              <select value={pageSize} onChange={(e) => update({ size: e.target.value === String(PAGE_SIZES[0]) ? '' : e.target.value })}>
+                {PAGE_SIZES.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="button" className="btn" disabled={!hasNext} onClick={() => update({ page: String(page + 1) })}>
               Next
             </button>
           </nav>
         </div>
+      )}
+      {assigning && (
+        <BulkAssignDialog
+          activityIds={rows.filter((r) => selected.has(r.id)).map((r) => r.id)}
+          onCancel={() => setAssigning(false)}
+          onDone={(result, educatorName) => {
+            setAssigning(false)
+            setPicked({ key: viewKey, ids: new Set() })
+            setNotice(describeResult(result, educatorName))
+            reload()
+          }}
+        />
       )}
     </>
   )
